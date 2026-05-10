@@ -36,6 +36,18 @@ public class MessageLog {
     @ColumnInfo(name = "notif_reply_time")
     private long notifReplyTime;
 
+    // ReplyMind v3 schema additions — all nullable so the v2 → v3 ALTER TABLE migration succeeds.
+    @ColumnInfo(name = "category")
+    private String category;
+    @ColumnInfo(name = "confidence")
+    private Float confidence;
+    @ColumnInfo(name = "action_taken")
+    private String actionTaken;
+    @ColumnInfo(name = "notif_body_snippet")
+    private String notifBodySnippet;
+    @ColumnInfo(name = "sentiment")
+    private String sentiment;
+
     public MessageLog(int index,
                       String notifTitle,
                       long notifArrivedTime,
@@ -114,4 +126,19 @@ public class MessageLog {
     public void setNotifReplyTime(long notifReplyTime) {
         this.notifReplyTime = notifReplyTime;
     }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+
+    public Float getConfidence() { return confidence; }
+    public void setConfidence(Float confidence) { this.confidence = confidence; }
+
+    public String getActionTaken() { return actionTaken; }
+    public void setActionTaken(String actionTaken) { this.actionTaken = actionTaken; }
+
+    public String getNotifBodySnippet() { return notifBodySnippet; }
+    public void setNotifBodySnippet(String notifBodySnippet) { this.notifBodySnippet = notifBodySnippet; }
+
+    public String getSentiment() { return sentiment; }
+    public void setSentiment(String sentiment) { this.sentiment = sentiment; }
 }

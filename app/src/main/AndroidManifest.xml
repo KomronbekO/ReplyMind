@@ -101,6 +101,54 @@
             android:label="AI Configuration"
             android:parentActivityName=".activity.customreplyeditor.CustomReplyEditorActivity" />
 
+        <activity
+            android:name=".activity.profile.ProfileActivity"
+            android:exported="false"
+            android:label="@string/profile_screen_title"
+            android:parentActivityName=".activity.settings.SettingsActivity" />
+
+        <activity
+            android:name=".activity.inbox.InboxActivity"
+            android:exported="false"
+            android:label="@string/inbox_screen_title"
+            android:parentActivityName=".activity.main.MainActivity" />
+
+        <activity
+            android:name=".activity.inbox.MessageDetailActivity"
+            android:exported="false"
+            android:label="@string/message_detail_title"
+            android:parentActivityName=".activity.inbox.InboxActivity" />
+
+        <activity
+            android:name=".activity.categories.CategoriesActivity"
+            android:exported="false"
+            android:label="@string/manage_categories_title"
+            android:parentActivityName=".activity.settings.SettingsActivity" />
+
+        <activity
+            android:name=".activity.categories.CategoryEditorActivity"
+            android:exported="false"
+            android:label="@string/category_editor_title"
+            android:parentActivityName=".activity.categories.CategoriesActivity" />
+
+        <activity
+            android:name=".activity.vip.VipContactsActivity"
+            android:exported="false"
+            android:label="@string/vip_contacts_title"
+            android:parentActivityName=".activity.settings.SettingsActivity" />
+
+        <activity
+            android:name=".activity.insights.InsightsActivity"
+            android:exported="false"
+            android:label="@string/insights_title"
+            android:parentActivityName=".activity.settings.SettingsActivity" />
+
+        <activity
+            android:name=".activity.onboarding.OnboardingActivity"
+            android:exported="false"
+            android:label="@string/onboarding_welcome_title"
+            android:theme="@style/Theme.WaReply" />
+
         <!-- Notification Listener Service -->
         <service
             android:name=".service.NotificationService"

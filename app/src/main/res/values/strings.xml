@@ -305,6 +305,142 @@
     <string name="contact_filter_enabled_blacklist">Everyone except selected (%1$d)</string>
     <string name="account">Account</string>
     <string name="pref_account" translatable="false">pref_account</string>
+
+    <!-- ReplyMind: Onboarding -->
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_finish">Finish</string>
+
+    <string name="onboarding_welcome_title">Welcome to ReplyMind</string>
+    <string name="onboarding_welcome_subtitle">Smart auto-replies that adapt to who messaged you, what they said, and what time it is.</string>
+    <string name="onboarding_welcome_bullet_1">🧠  AI classifies each message before replying</string>
+    <string name="onboarding_welcome_bullet_2">📂  Per-category actions: reply, suppress, escalate</string>
+    <string name="onboarding_welcome_bullet_3">🌴  Vacation mode + working-hours awareness</string>
+    <string name="onboarding_get_started">Get Started</string>
+
+    <string name="onboarding_permission_title">Grant notification access</string>
+    <string name="onboarding_permission_subtitle">ReplyMind needs to read your messaging-app notifications so it can reply on your behalf. Tap below to open Android settings.</string>
+    <string name="onboarding_permission_open_settings">Open Notification Access</string>
+    <string name="onboarding_permission_granted">✅ Access granted</string>
+    <string name="onboarding_permission_pending">⏳ Tap above, enable Atomatic, then return.</string>
+
+    <string name="onboarding_profile_title">Tell ReplyMind about you</string>
+    <string name="onboarding_profile_subtitle">The classifier uses this to weigh urgency and pick tone. Everything stays encrypted on your device.</string>
+
+    <string name="onboarding_vip_title">Anyone you can\'t miss?</string>
+    <string name="onboarding_vip_subtitle">For categories you set to "VIP-only bypass", only messages from these senders will get a reply. Skip if you\'re not sure.</string>
+
+    <string name="onboarding_categories_title">Default categories</string>
+    <string name="onboarding_categories_subtitle">ReplyMind starts with six smart defaults. You can rename, recolor, or add custom categories from Settings → Manage categories later.</string>
+
+    <string name="onboarding_ai_title">Pick your AI brain</string>
+    <string name="onboarding_ai_subtitle">Smart Classification needs an LLM. Use your own API key, or skip and run with template replies only.</string>
+    <string name="onboarding_ai_skip">Skip — template replies only</string>
+    <string name="onboarding_ai_byok_hint">OpenAI-compatible API key (sk-…)</string>
+    <string name="onboarding_ai_provider_label">Provider</string>
+    <string name="onboarding_ai_save">Save key</string>
+    <string name="onboarding_ai_saved">✅ Key saved</string>
+
+    <string name="onboarding_done_title">You\'re all set 🎉</string>
+    <string name="onboarding_done_subtitle">ReplyMind will start classifying messages from your enabled apps. You can change anything from Settings.</string>
+
+    <string name="onboarding_reset_title">Reset onboarding</string>
+    <string name="onboarding_reset_summary">Run the welcome flow again. Your data and profile stay put.</string>
+    <string name="pref_onboarding_reset" translatable="false">pref_onboarding_reset</string>
+
+    <!-- ReplyMind: Insights -->
+    <string name="insights_title">Insights</string>
+    <string name="insights_summary">Time saved, category breakdown, top senders.</string>
+    <string name="pref_insights" translatable="false">pref_insights</string>
+    <string name="insights_range_today">Today</string>
+    <string name="insights_range_week">7 days</string>
+    <string name="insights_range_month">30 days</string>
+    <string name="insights_hero_format" formatted="false">ReplyMind handled %d messages — about %s saved.</string>
+    <string name="insights_section_categories">By category</string>
+    <string name="insights_section_top_senders">Top senders</string>
+    <string name="insights_no_data">No data yet for this range. Send some test messages with classification on.</string>
+    <string name="insights_minutes_short" formatted="false">%d min</string>
+    <string name="insights_hours_short" formatted="false">%.1f hr</string>
+
+    <!-- ReplyMind: VIP contacts -->
+    <string name="vip_contacts_title">VIP contacts</string>
+    <string name="vip_contacts_summary">Add display names that should bypass any VIP-only categories.</string>
+    <string name="pref_vip_contacts" translatable="false">pref_vip_contacts</string>
+    <string name="vip_add_hint">Sender display name (must match exactly)</string>
+    <string name="vip_add_button">Add</string>
+    <string name="vip_empty">No VIPs yet. Add a sender display name above and any VIP-only-bypass category will route through to a normal reply for them.</string>
+    <string name="vip_remove">Remove</string>
+
+    <!-- ReplyMind: categories management -->
+    <string name="manage_categories_title">Manage categories</string>
+    <string name="manage_categories_summary">Tweak names, actions, and per-category reply templates.</string>
+    <string name="pref_manage_categories" translatable="false">pref_manage_categories</string>
+    <string name="category_editor_title">Edit category</string>
+    <string name="category_action_label">Action</string>
+    <string name="category_action_reply_default">Default reply (AI or canned)</string>
+    <string name="category_action_reply_template">Reply with category template</string>
+    <string name="category_action_suppress">Suppress (don\'t auto-reply)</string>
+    <string name="category_action_escalate">Escalate (notify only, don\'t auto-reply)</string>
+    <string name="category_action_vip_only_bypass">VIP-only bypass</string>
+    <string name="category_template_hint">Reply template (used when "Reply with category template" is selected)</string>
+    <string name="category_saved_toast">Category updated</string>
+
+    <!-- ReplyMind: time-aware replies -->
+    <string name="ooh_prefix">[Outside my working hours] </string>
+
+    <!-- ReplyMind: vacation mode -->
+    <string name="vacation_mode_title">Vacation Mode</string>
+    <string name="vacation_mode_off">Off</string>
+    <string name="vacation_mode_on_until">On until %s</string>
+    <string name="vacation_mode_card_subtitle_off">Tap to set a vacation auto-reply.</string>
+    <string name="vacation_pick_until_date">Auto-disable on</string>
+    <string name="vacation_message_hint">Vacation auto-reply (e.g., "I\'m on vacation until Sept 15. I\'ll reply when I\'m back.")</string>
+    <string name="vacation_enable">Enable Vacation Mode</string>
+    <string name="vacation_disable">Disable Vacation Mode</string>
+    <string name="vacation_save">Save</string>
+    <string name="vacation_until_picker_title">End date</string>
+    <string name="vacation_message_required_toast">Please enter a vacation message before enabling.</string>
+    <string name="vacation_enabled_toast">Vacation Mode is on.</string>
+    <string name="vacation_disabled_toast">Vacation Mode is off.</string>
+
+    <!-- ReplyMind: smart classification -->
+    <string name="inbox_tab_title">Inbox</string>
+    <string name="inbox_screen_title">Inbox</string>
+    <string name="inbox_empty_title">No classified messages yet</string>
+    <string name="inbox_empty_subtitle">Once Smart Classification is on, every message you receive lands here with its category and the action ReplyMind took.</string>
+    <string name="inbox_filter_all">All</string>
+    <string name="inbox_action_replied">Auto-replied</string>
+    <string name="inbox_action_template">Template reply</string>
+    <string name="inbox_action_suppressed">Suppressed</string>
+    <string name="inbox_action_escalated">Escalated</string>
+    <string name="inbox_action_default">Replied</string>
+    <string name="inbox_unclassified">Unclassified</string>
+    <string name="inbox_relative_now">just now</string>
+    <string name="inbox_relative_min" formatted="false">%dm ago</string>
+    <string name="inbox_relative_hour" formatted="false">%dh ago</string>
+    <string name="inbox_relative_day" formatted="false">%dd ago</string>
+    <string name="message_detail_title">Message</string>
+    <string name="message_detail_classifier_section">Classifier</string>
+    <string name="message_detail_confidence">Confidence: %d%%</string>
+    <string name="message_detail_reasoning">Reasoning</string>
+    <string name="message_detail_action_section">Action taken</string>
+    <string name="message_detail_reply_preview">Reply sent</string>
+    <string name="message_detail_no_snippet">Message body not stored. Enable "Keep snippets" in Settings to retain bodies for review.</string>
+    <string name="preference_category_replymind_label">ReplyMind (Smart Classification)</string>
+    <string name="pref_classification_enabled" translatable="false">pref_classification_enabled</string>
+    <string name="pref_replymind_profile" translatable="false">pref_replymind_profile</string>
+    <string name="enable_smart_classification_title">Enable Smart Classification</string>
+    <string name="enable_smart_classification_summary">Use your AI provider to classify each incoming message and pick a category-specific action. Requires BYOK to be configured.</string>
+    <string name="edit_your_profile_title">Your profile</string>
+    <string name="edit_your_profile_summary">Tell ReplyMind a bit about you so the classifier can reason like you would.</string>
+    <string name="profile_display_name_hint">Display name</string>
+    <string name="profile_occupation_hint">Occupation (e.g., Final-year CS student)</string>
+    <string name="profile_communication_style_hint">Communication style (optional, e.g., Friendly and concise)</string>
+    <string name="profile_additional_context_hint">Anything else the AI should know? (optional)</string>
+    <string name="profile_save">Save</string>
+    <string name="profile_saved_toast">Profile saved</string>
+    <string name="profile_screen_title">Your profile</string>
     <string name="resend_email">Resend Email</string>
     <string name="email_verified">Email verified! 🎉</string>
     <string name="i_ve_verified">I’ve Verified</string>

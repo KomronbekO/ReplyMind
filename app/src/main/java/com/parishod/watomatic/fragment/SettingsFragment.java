@@ -66,6 +66,74 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             });
         }
 
+        // ReplyMind: classification toggle binds directly to PreferencesManager so the
+        // value is correctly persisted in default SharedPreferences (no extra writes needed
+        // from PreferenceFragmentCompat — the SwitchPreference key matches our pref key).
+        SwitchPreference classificationPref = findPreference(getString(R.string.pref_classification_enabled));
+        if (classificationPref != null) {
+            // Reflect the current stored value (defaults to false on first read).
+            classificationPref.setChecked(
+                    PreferencesManager.getPreferencesInstance(getContext()).isClassificationEnabled());
+            classificationPref.setOnPreferenceChangeListener((pref, newValue) -> {
+                boolean enabled = Boolean.TRUE.equals(newValue);
+                PreferencesManager.getPreferencesInstance(getContext()).setClassificationEnabled(enabled);
+                return true;
+            });
+        }
+
+        Preference profilePref = findPreference(getString(R.string.pref_replymind_profile));
+        if (profilePref != null) {
+            profilePref.setOnPreferenceClickListener(p -> {
+                Intent i = new Intent(requireActivity(),
+                        com.parishod.watomatic.activity.profile.ProfileActivity.class);
+                startActivity(i);
+                return true;
+            });
+        }
+
+        Preference categoriesPref = findPreference(getString(R.string.pref_manage_categories));
+        if (categoriesPref != null) {
+            categoriesPref.setOnPreferenceClickListener(p -> {
+                Intent i = new Intent(requireActivity(),
+                        com.parishod.watomatic.activity.categories.CategoriesActivity.class);
+                startActivity(i);
+                return true;
+            });
+        }
+
+        Preference vipPref = findPreference(getString(R.string.pref_vip_contacts));
+        if (vipPref != null) {
+            vipPref.setOnPreferenceClickListener(p -> {
+                Intent i = new Intent(requireActivity(),
+                        com.parishod.watomatic.activity.vip.VipContactsActivity.class);
+                startActivity(i);
+                return true;
+            });
+        }
+
+        Preference insightsPref = findPreference(getString(R.string.pref_insights));
+        if (insightsPref != null) {
+            insightsPref.setOnPreferenceClickListener(p -> {
+                Intent i = new Intent(requireActivity(),
+                        com.parishod.watomatic.activity.insights.InsightsActivity.class);
+                startActivity(i);
+                return true;
+            });
+        }
+
+        Preference resetOnboardingPref = findPreference(getString(R.string.pref_onboarding_reset));
+        if (resetOnboardingPref != null) {
+            resetOnboardingPref.setOnPreferenceClickListener(p -> {
+                // Clear the completion flag and relaunch onboarding. The user's profile + other
+                // data stay in place; the wizard is pre-filled from existing values.
+                PreferencesManager.getPreferencesInstance(getContext()).setOnboardingComplete(false);
+                Intent i = new Intent(requireActivity(),
+                        com.parishod.watomatic.activity.onboarding.OnboardingActivity.class);
+                startActivity(i);
+                return true;
+            });
+        }
+
         // Account/Login preference
         Preference accountPref = findPreference(getString(R.string.pref_account));
         if(BuildConfig.FLAVOR.equals("Default")){

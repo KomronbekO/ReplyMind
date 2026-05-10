@@ -27,6 +27,15 @@ class MainActivity : BaseActivity() {
             return
         }
 
+        // ReplyMind: gate on onboarding completion. Runs after login so guest/Default flavor
+        // also sees the welcome flow on first launch.
+        if (!preferencesManager.isOnboardingComplete) {
+            startActivity(Intent(this,
+                com.parishod.watomatic.activity.onboarding.OnboardingActivity::class.java))
+            finish()
+            return
+        }
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
         setTitle(R.string.app_name)

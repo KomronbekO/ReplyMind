@@ -47,4 +47,38 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/preference_category_replymind_label">
+
+        <SwitchPreference
+            android:key="@string/pref_classification_enabled"
+            android:title="@string/enable_smart_classification_title"
+            android:summary="@string/enable_smart_classification_summary" />
+
+        <Preference
+            android:key="@string/pref_replymind_profile"
+            android:title="@string/edit_your_profile_title"
+            android:summary="@string/edit_your_profile_summary" />
+
+        <Preference
+            android:key="@string/pref_manage_categories"
+            android:title="@string/manage_categories_title"
+            android:summary="@string/manage_categories_summary" />
+
+        <Preference
+            android:key="@string/pref_vip_contacts"
+            android:title="@string/vip_contacts_title"
+            android:summary="@string/vip_contacts_summary" />
+
+        <Preference
+            android:key="@string/pref_insights"
+            android:title="@string/insights_title"
+            android:summary="@string/insights_summary" />
+
+        <Preference
+            android:key="@string/pref_onboarding_reset"
+            android:title="@string/onboarding_reset_title"
+            android:summary="@string/onboarding_reset_summary" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

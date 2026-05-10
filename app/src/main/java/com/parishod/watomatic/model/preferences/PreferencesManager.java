@@ -75,6 +75,20 @@ public class PreferencesManager {
     private final String KEY_SUBSCRIPTION_STATUS_LAST_CHECKED = "pref_subscription_status_last_checked";
     private final String KEY_REMAINING_ATOMS = "pref_remaining_atoms";
     private final String KEY_QUOTA_NOTIFICATION_LAST_SHOWN = "pref_quota_notification_last_shown";
+
+    // ReplyMind: onboarding & classification
+    private final String KEY_ONBOARDING_COMPLETE = "pref_onboarding_complete";
+    private final String KEY_CLASSIFICATION_ENABLED = "pref_classification_enabled";
+    private final String KEY_CLASSIFICATION_CACHE_TTL_MIN = "pref_classification_cache_ttl_min";
+    private final String KEY_CATEGORIES_JSON = "pref_categories_json";
+    private final String KEY_CATEGORY_ACTION_PREFIX = "pref_category_action_";
+    private final String KEY_CATEGORY_TEMPLATE_PREFIX = "pref_category_template_";
+    private final String KEY_USER_PROFILE_JSON = "pref_user_profile_json";
+    private final String KEY_KEEP_MESSAGE_SNIPPETS = "pref_keep_message_snippets";
+    private final String KEY_VIP_CONTACTS_JSON = "pref_vip_contacts_json";
+    private final String KEY_VACATION_UNTIL = "pref_vacation_until";
+    private final String KEY_VACATION_MESSAGE = "pref_vacation_message";
+
     private static PreferencesManager _instance;
     private final SharedPreferences _sharedPrefs;
     private SharedPreferences _encryptedSharedPrefs;
@@ -732,6 +746,212 @@ public class PreferencesManager {
     public void setQuotaNotificationLastShown(long timestamp) {
         SharedPreferences.Editor editor = _sharedPrefs.edit();
         editor.putLong(KEY_QUOTA_NOTIFICATION_LAST_SHOWN, timestamp);
+        editor.apply();
+    }
+
+    // -----------------------------------------------------------------------
+    // ReplyMind: onboarding, classification, profile, VIP, vacation
+    // -----------------------------------------------------------------------
+
+    public boolean isOnboardingComplete() {
+        return _sharedPrefs.getBoolean(KEY_ONBOARDING_COMPLETE, false);
+    }
+
+    public void setOnboardingComplete(boolean complete) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putBoolean(KEY_ONBOARDING_COMPLETE, complete);
+        editor.apply();
+    }
+
+    public boolean isClassificationEnabled() {
+        return _sharedPrefs.getBoolean(KEY_CLASSIFICATION_ENABLED, false);
+    }
+
+    public void setClassificationEnabled(boolean enabled) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putBoolean(KEY_CLASSIFICATION_ENABLED, enabled);
+        editor.apply();
+    }
+
+    /** Cache TTL window for sender-keyed classification dedup. Default 10 minutes. */
+    public long getClassificationCacheTtlMs() {
+        int min = _sharedPrefs.getInt(KEY_CLASSIFICATION_CACHE_TTL_MIN, 10);
+        return min * 60_000L;
+    }
+
+    public void setClassificationCacheTtlMinutes(int minutes) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putInt(KEY_CLASSIFICATION_CACHE_TTL_MIN, minutes);
+        editor.apply();
+    }
+
+    /** User profile is sensitive (names of contacts, occupation) — kept in encrypted prefs. */
+    public com.parishod.watomatic.model.classifier.UserProfile getUserProfile() {
+        if (_encryptedSharedPrefs == null) {
+            return new com.parishod.watomatic.model.classifier.UserProfile();
+        }
+        String json = _encryptedSharedPrefs.getString(KEY_USER_PROFILE_JSON, null);
+        if (json == null) return new com.parishod.watomatic.model.classifier.UserProfile();
+        try {
+            com.parishod.watomatic.model.classifier.UserProfile p =
+                    new Gson().fromJson(json, com.parishod.watomatic.model.classifier.UserProfile.class);
+            return p != null ? p : new com.parishod.watomatic.model.classifier.UserProfile();
+        } catch (Exception e) {
+            Log.w("PreferencesManager", "Failed to deserialize UserProfile, returning empty", e);
+            return new com.parishod.watomatic.model.classifier.UserProfile();
+        }
+    }
+
+    public void saveUserProfile(com.parishod.watomatic.model.classifier.UserProfile profile) {
+        if (_encryptedSharedPrefs == null) {
+            Log.e("PreferencesManager", "EncryptedSharedPreferences not initialized. Cannot save user profile.");
+            return;
+        }
+        String json = new Gson().toJson(profile);
+        SharedPreferences.Editor editor = _encryptedSharedPrefs.edit();
+        editor.putString(KEY_USER_PROFILE_JSON, json);
+        editor.apply();
+    }
+
+    public java.util.List<com.parishod.watomatic.model.classifier.ClassificationCategory> getClassificationCategories() {
+        String json = _sharedPrefs.getString(KEY_CATEGORIES_JSON, null);
+        if (json == null) {
+            return com.parishod.watomatic.model.classifier.ClassificationCategory.defaults();
+        }
+        try {
+            Type t = new TypeToken<java.util.List<com.parishod.watomatic.model.classifier.ClassificationCategory>>(){}.getType();
+            java.util.List<com.parishod.watomatic.model.classifier.ClassificationCategory> cats =
+                    new Gson().fromJson(json, t);
+            return (cats != null && !cats.isEmpty())
+                    ? cats
+                    : com.parishod.watomatic.model.classifier.ClassificationCategory.defaults();
+        } catch (Exception e) {
+            Log.w("PreferencesManager", "Failed to deserialize categories, falling back to defaults", e);
+            return com.parishod.watomatic.model.classifier.ClassificationCategory.defaults();
+        }
+    }
+
+    public void saveClassificationCategories(java.util.List<com.parishod.watomatic.model.classifier.ClassificationCategory> categories) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putString(KEY_CATEGORIES_JSON, new Gson().toJson(categories));
+        editor.apply();
+    }
+
+    public com.parishod.watomatic.model.classifier.ClassificationCategory findCategoryById(String id) {
+        if (id == null) return null;
+        for (com.parishod.watomatic.model.classifier.ClassificationCategory c : getClassificationCategories()) {
+            if (id.equalsIgnoreCase(c.getId())) return c;
+        }
+        return null;
+    }
+
+    /**
+     * Resolve the action for a category, honouring any per-category override the user set.
+     * Falls back to the category's own {@code defaultAction}, then to {@code REPLY_DEFAULT}.
+     */
+    public com.parishod.watomatic.model.classifier.CategoryAction getCategoryAction(String categoryId) {
+        com.parishod.watomatic.model.classifier.ClassificationCategory cat = findCategoryById(categoryId);
+        com.parishod.watomatic.model.classifier.CategoryAction fallback =
+                (cat != null && cat.getDefaultAction() != null)
+                        ? cat.getDefaultAction()
+                        : com.parishod.watomatic.model.classifier.CategoryAction.REPLY_DEFAULT;
+        if (categoryId == null) return fallback;
+        String stored = _sharedPrefs.getString(KEY_CATEGORY_ACTION_PREFIX + categoryId, null);
+        if (stored == null) return fallback;
+        try {
+            return com.parishod.watomatic.model.classifier.CategoryAction.valueOf(stored);
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
+    }
+
+    public void setCategoryAction(String categoryId,
+                                  com.parishod.watomatic.model.classifier.CategoryAction action) {
+        if (categoryId == null) return;
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        if (action == null) {
+            editor.remove(KEY_CATEGORY_ACTION_PREFIX + categoryId);
+        } else {
+            editor.putString(KEY_CATEGORY_ACTION_PREFIX + categoryId, action.name());
+        }
+        editor.apply();
+    }
+
+    public String getCategoryTemplate(String categoryId) {
+        if (categoryId == null) return null;
+        return _sharedPrefs.getString(KEY_CATEGORY_TEMPLATE_PREFIX + categoryId, null);
+    }
+
+    public void setCategoryTemplate(String categoryId, String template) {
+        if (categoryId == null) return;
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        if (template == null || template.isEmpty()) {
+            editor.remove(KEY_CATEGORY_TEMPLATE_PREFIX + categoryId);
+        } else {
+            editor.putString(KEY_CATEGORY_TEMPLATE_PREFIX + categoryId, template);
+        }
+        editor.apply();
+    }
+
+    public boolean isKeepMessageSnippetsEnabled() {
+        return _sharedPrefs.getBoolean(KEY_KEEP_MESSAGE_SNIPPETS, false);
+    }
+
+    public void setKeepMessageSnippetsEnabled(boolean enabled) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putBoolean(KEY_KEEP_MESSAGE_SNIPPETS, enabled);
+        editor.apply();
+    }
+
+    public Set<String> getVipContacts() {
+        String json = _sharedPrefs.getString(KEY_VIP_CONTACTS_JSON, null);
+        if (json == null) return new HashSet<>();
+        try {
+            Type t = new TypeToken<Set<String>>(){}.getType();
+            Set<String> set = new Gson().fromJson(json, t);
+            return set != null ? set : new HashSet<>();
+        } catch (Exception e) {
+            return new HashSet<>();
+        }
+    }
+
+    public void setVipContacts(Set<String> contacts) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putString(KEY_VIP_CONTACTS_JSON, new Gson().toJson(contacts != null ? contacts : new HashSet<>()));
+        editor.apply();
+    }
+
+    public boolean isVipSender(String senderName) {
+        if (senderName == null) return false;
+        for (String v : getVipContacts()) {
+            if (senderName.equalsIgnoreCase(v)) return true;
+        }
+        return false;
+    }
+
+    /** Epoch millis until which vacation mode is active. 0 means off. */
+    public long getVacationUntil() {
+        return _sharedPrefs.getLong(KEY_VACATION_UNTIL, 0L);
+    }
+
+    public void setVacationUntil(long epochMs) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putLong(KEY_VACATION_UNTIL, epochMs);
+        editor.apply();
+    }
+
+    public boolean isVacationModeActive() {
+        long until = getVacationUntil();
+        return until > 0L && until > System.currentTimeMillis();
+    }
+
+    public String getVacationMessage() {
+        return _sharedPrefs.getString(KEY_VACATION_MESSAGE, "");
+    }
+
+    public void setVacationMessage(String message) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putString(KEY_VACATION_MESSAGE, message != null ? message : "");
         editor.apply();
     }
 }

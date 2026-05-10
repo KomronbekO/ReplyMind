@@ -185,11 +185,29 @@ public class MainFragment extends Fragment implements DialogActionListener {
         // Setup Edit button
         editButton.setOnClickListener(v -> openCustomReplyEditorActivity(v));
 
+        // ReplyMind: Vacation Mode card
+        View vacationCard = view.findViewById(R.id.vacation_mode_card);
+        TextView vacationStatus = view.findViewById(R.id.vacation_mode_status);
+        if (vacationCard != null && vacationStatus != null) {
+            renderVacationStatus(vacationStatus);
+            vacationCard.setOnClickListener(v -> {
+                VacationModeBottomSheet sheet = new VacationModeBottomSheet();
+                sheet.setOnStateChangedListener(() -> renderVacationStatus(vacationStatus));
+                sheet.show(getParentFragmentManager(), "vacation_mode");
+            });
+        }
+
         // Setup Bottom Navigation
         bottomNav.setOnNavigationItemSelectedListener(item -> {
             int itemId = item.getItemId();
             if (itemId == R.id.navigation_atomatic) {
                 // Already on this screen
+                return true;
+            } else if (itemId == R.id.navigation_inbox) {
+                // ReplyMind: open the classified-messages inbox
+                Intent inboxIntent = new Intent(requireActivity(),
+                        com.parishod.watomatic.activity.inbox.InboxActivity.class);
+                startActivity(inboxIntent);
                 return true;
             } else if (itemId == R.id.navigation_community) {
                 // Handle community navigation
@@ -567,6 +585,17 @@ public class MainFragment extends Fragment implements DialogActionListener {
     private void openAboutActivity() {
         Intent intent = new Intent(requireActivity(), AboutActivity.class);
         startActivity(intent);
+    }
+
+    private void renderVacationStatus(TextView statusView) {
+        PreferencesManager prefs = PreferencesManager.getPreferencesInstance(requireContext());
+        if (prefs.isVacationModeActive()) {
+            String when = new java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault())
+                    .format(new java.util.Date(prefs.getVacationUntil()));
+            statusView.setText(getString(R.string.vacation_mode_on_until, when));
+        } else {
+            statusView.setText(R.string.vacation_mode_card_subtitle_off);
+        }
     }
 
     private void showPermissionsDialog() {

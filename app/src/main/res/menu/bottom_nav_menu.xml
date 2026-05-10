@@ -5,6 +5,10 @@
         android:icon="@drawable/ic_chat_circle_dots_filled"
         android:title="Atomatic" />
     <item
+        android:id="@+id/navigation_inbox"
+        android:icon="@drawable/ic_inbox"
+        android:title="@string/inbox_tab_title" />
+    <item
         android:id="@+id/navigation_community"
         android:icon="@drawable/ic_users"
         android:title="Community" />

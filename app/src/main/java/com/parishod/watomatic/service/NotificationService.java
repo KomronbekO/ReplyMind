@@ -27,6 +27,11 @@ import androidx.core.app.RemoteInput;
 import com.parishod.watomatic.NotificationWear;
 import com.parishod.watomatic.R;
 import com.parishod.watomatic.model.CustomRepliesData;
+import com.parishod.watomatic.model.classifier.CategoryAction;
+import com.parishod.watomatic.model.classifier.CategoryActionRouter;
+import com.parishod.watomatic.model.classifier.ClassificationResult;
+import com.parishod.watomatic.model.classifier.LlmMessageClassifier;
+import com.parishod.watomatic.model.classifier.MessageClassifier;
 import com.parishod.watomatic.network.AtomaticAIService;
 import com.parishod.watomatic.network.OpenAIService;
 import com.parishod.watomatic.network.RetrofitInstance;
@@ -55,6 +60,8 @@ public class NotificationService extends NotificationListenerService {
     private final String TAG = NotificationService.class.getSimpleName();
     private DbUtils dbUtils;
     private NotificationReplyDecider replyDecider;
+    private MessageClassifier classifier;
+    private CategoryActionRouter router;
 
     private NotificationReplyDecider getReplyDecider() {
         if (replyDecider == null) {
@@ -67,6 +74,27 @@ public class NotificationService extends NotificationListenerService {
                     ContactsHelper.Companion.getInstance(this));
         }
         return replyDecider;
+    }
+
+    private MessageClassifier getClassifier() {
+        if (classifier == null) {
+            classifier = new LlmMessageClassifier(getApplicationContext());
+        }
+        return classifier;
+    }
+
+    private CategoryActionRouter getRouter() {
+        if (router == null) {
+            router = new CategoryActionRouter(PreferencesManager.getPreferencesInstance(this));
+        }
+        return router;
+    }
+
+    private DbUtils getDbUtils() {
+        if (dbUtils == null) {
+            dbUtils = new DbUtils(getApplicationContext());
+        }
+        return dbUtils;
     }
 
     @Override
@@ -158,35 +186,210 @@ public class NotificationService extends NotificationListenerService {
                 replyText = "I am currently busy. Will reply later.";
             }
         }
-        String fallbackReplyText = replyText; // needs to be final to access in inner class hence one more variable
+        final String fallbackReplyText = replyText; // needs to be final to access in inner class hence one more variable
 
         CharSequence incomingMessageChars = sbn.getNotification().extras.getCharSequence(android.app.Notification.EXTRA_TEXT);
-        String incomingMessage = (incomingMessageChars != null) ? incomingMessageChars.toString() : null;
+        final String incomingMessage = (incomingMessageChars != null) ? incomingMessageChars.toString() : null;
 
-        // Determine if AI should be used based on the selected reply method
+        // -------------------------------------------------------------------
+        // ReplyMind: Vacation Mode short-circuit. If the user is on vacation, skip the
+        // classifier entirely and send the configured vacation message. Saves LLM calls and
+        // guarantees consistent vacation behavior regardless of how a message is classified.
+        // -------------------------------------------------------------------
+        if (preferencesManager.isVacationModeActive()) {
+            String vacationMsg = preferencesManager.getVacationMessage();
+            if (vacationMsg == null || vacationMsg.trim().isEmpty()) {
+                vacationMsg = fallbackReplyText;
+            }
+            Log.i(TAG, "Vacation Mode active — using vacation reply.");
+            // We don't have a classification here; persist as a default-replied row with no
+            // category (Inbox will render it as Unclassified with action "Replied").
+            sendActualReplyWithMeta(sbn, notificationWear, vacationMsg, null, null, incomingMessage);
+            return;
+        }
+
+        // -------------------------------------------------------------------
+        // ReplyMind: classification gate. If the user has classification on AND has BYOK
+        // configured AND we have a non-empty body, classify first and route via the user's
+        // per-category action. Otherwise fall through to the legacy reply flow unchanged.
+        // -------------------------------------------------------------------
+        final MessageClassifier mc = getClassifier();
+        final boolean canClassify = mc.isAvailable()
+                && incomingMessage != null
+                && !incomingMessage.trim().isEmpty();
+
+        if (!canClassify) {
+            proceedWithLegacyReplyFlow(sbn, notificationWear, incomingMessage, fallbackReplyText, null);
+            return;
+        }
+
+        final String senderTitle = NotificationUtils.getTitle(sbn);
+        mc.classify(senderTitle, sbn.getPackageName(), incomingMessage, new MessageClassifier.Callback() {
+            @Override
+            public void onResult(@NonNull final ClassificationResult result) {
+                Log.d(TAG, "Classification: " + result.getCategoryId()
+                        + " conf=" + result.getConfidence()
+                        + (result.isFallback() ? " [fallback]" : "")
+                        + " — " + result.getReasoning());
+
+                getRouter().route(result, senderTitle, new CategoryActionRouter.RoutingCallbacks() {
+                    @Override
+                    public void doDefaultReplyFlow(@NonNull ClassificationResult r) {
+                        proceedWithLegacyReplyFlow(sbn, notificationWear, incomingMessage, fallbackReplyText, r);
+                    }
+
+                    @Override
+                    public void sendTemplateReply(@NonNull String templateText, @NonNull ClassificationResult r) {
+                        String finalText = maybePrependOutOfHoursPrefix(templateText);
+                        sendActualReplyWithMeta(sbn, notificationWear, finalText,
+                                r, CategoryAction.REPLY_TEMPLATE, incomingMessage);
+                    }
+
+                    @Override
+                    public void suppressReply(@NonNull ClassificationResult r) {
+                        Log.i(TAG, "Suppressing reply for category " + r.getCategoryId());
+                        logSuppressed(sbn, r, CategoryAction.SUPPRESS, incomingMessage);
+                    }
+
+                    @Override
+                    public void escalate(@NonNull ClassificationResult r) {
+                        Log.i(TAG, "Escalating: leaving original notification visible. Category=" + r.getCategoryId());
+                        logSuppressed(sbn, r, CategoryAction.ESCALATE, incomingMessage);
+                    }
+                });
+            }
+        });
+    }
+
+    /** Run the original (non-classified) reply path: AI or canned reply. */
+    private void proceedWithLegacyReplyFlow(StatusBarNotification sbn,
+                                            NotificationWear notificationWear,
+                                            String incomingMessage,
+                                            String fallbackReplyText,
+                                            ClassificationResult classification) {
+        PreferencesManager preferencesManager = PreferencesManager.getPreferencesInstance(this);
         boolean shouldUseAI = false;
 
         if (preferencesManager.isAutomaticAiRepliesEnabled()) {
-            // Automatic AI: requires subscription but no API key
-            shouldUseAI = preferencesManager.isSubscriptionActive() &&
-                         incomingMessage != null && !incomingMessage.trim().isEmpty();
+            shouldUseAI = preferencesManager.isSubscriptionActive()
+                    && incomingMessage != null && !incomingMessage.trim().isEmpty();
             Log.d(TAG, "Automatic AI mode - Subscription active: " + preferencesManager.isSubscriptionActive());
         } else if (preferencesManager.isByokRepliesEnabled()) {
-            // BYOK: requires API key but no subscription
             String apiKey = preferencesManager.getOpenAIApiKey();
-            shouldUseAI = apiKey != null && !apiKey.trim().isEmpty() &&
-                         !apiKey.equals("PENDING_CONFIGURATION") &&
-                         incomingMessage != null && !incomingMessage.trim().isEmpty();
+            shouldUseAI = apiKey != null && !apiKey.trim().isEmpty()
+                    && !apiKey.equals("PENDING_CONFIGURATION")
+                    && incomingMessage != null && !incomingMessage.trim().isEmpty();
             Log.d(TAG, "BYOK mode - API key configured: " + (apiKey != null && !apiKey.trim().isEmpty()));
         }
 
+        // Note: classification metadata is recorded by the AI fetch / sendActualReply path
+        // through the dbUtils.logReply overload only when we use the metadata path.
+        // For the existing AI-fetch flow, we still log via the legacy dbUtils.logReply(sbn,title)
+        // call inside sendActualReply — classification metadata for that path is captured
+        // via sendActualReplyWithMeta-style callers introduced for category-templates and suppression.
         if (shouldUseAI) {
             Log.d(TAG, "AI conditions met. Attempting to get AI reply.");
             fetchAiReply(sbn, notificationWear, incomingMessage, fallbackReplyText);
         } else {
             Log.d(TAG, "AI conditions not met. Using default reply.");
-            sendActualReply(sbn, notificationWear, fallbackReplyText);
+            if (classification != null) {
+                sendActualReplyWithMeta(sbn, notificationWear, fallbackReplyText,
+                        classification, CategoryAction.REPLY_DEFAULT, incomingMessage);
+            } else {
+                sendActualReply(sbn, notificationWear, fallbackReplyText);
+            }
         }
+    }
+
+    /**
+     * Send reply, persisting classifier metadata on the message log row.
+     * Used for category-template replies and (in the absence of an AI fetch) the default reply.
+     */
+    private void sendActualReplyWithMeta(StatusBarNotification sbn,
+                                         NotificationWear notificationWear,
+                                         String replyText,
+                                         ClassificationResult result,
+                                         CategoryAction action,
+                                         String incomingBody) {
+        RemoteInput finalRemoteIn = null;
+        Intent localIntent = new Intent();
+        localIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        Bundle localBundle = new Bundle();
+        for (RemoteInput remoteIn : notificationWear.getRemoteInputs()) {
+            if (remoteIn.getAllowFreeFormInput()) {
+                finalRemoteIn = remoteIn;
+                localBundle.putCharSequence(finalRemoteIn.getResultKey(), replyText);
+                break;
+            }
+        }
+        if (finalRemoteIn == null) return;
+
+        RemoteInput.addResultsToIntent(new RemoteInput[]{finalRemoteIn}, localIntent, localBundle);
+        try {
+            if (notificationWear.getPendingIntent() != null) {
+                getDbUtils().logReply(sbn, NotificationUtils.getTitle(sbn),
+                        replyText, result, action, true, incomingBody);
+
+                notificationWear.getPendingIntent().send(this, 0, localIntent);
+                if (PreferencesManager.getPreferencesInstance(this).isShowNotificationEnabled()) {
+                    NotificationHelper.getInstance(getApplicationContext()).sendNotification(
+                            sbn.getNotification().extras.getString("android.title"),
+                            sbn.getNotification().extras.getString("android.text"),
+                            sbn.getPackageName());
+                }
+                cancelNotification(sbn.getKey());
+                if (canPurgeMessages()) {
+                    getDbUtils().purgeMessageLogs();
+                    PreferencesManager.getPreferencesInstance(this).setPurgeMessageTime(System.currentTimeMillis());
+                }
+            }
+        } catch (PendingIntent.CanceledException e) {
+            Log.e(TAG, "sendActualReplyWithMeta error: " + e.getLocalizedMessage());
+        }
+    }
+
+    /**
+     * If the user has set working hours and the current local time falls outside them,
+     * prepend an "[Outside my working hours]" tag to the reply text. Skips when the user
+     * hasn't configured a sensible window (start == end).
+     */
+    private String maybePrependOutOfHoursPrefix(String replyText) {
+        if (replyText == null) return null;
+        com.parishod.watomatic.model.classifier.UserProfile profile =
+                PreferencesManager.getPreferencesInstance(this).getUserProfile();
+        if (profile == null) return replyText;
+        int start = profile.getWorkingHoursStartMinuteOfDay();
+        int end = profile.getWorkingHoursEndMinuteOfDay();
+        if (start == end) return replyText;
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        int nowMin = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE);
+        boolean isInsideHours;
+        if (start < end) {
+            isInsideHours = nowMin >= start && nowMin < end;
+        } else {
+            // Wraps midnight (e.g., 22:00 → 06:00 night shift).
+            isInsideHours = nowMin >= start || nowMin < end;
+        }
+        if (isInsideHours) return replyText;
+        try {
+            return getString(R.string.ooh_prefix) + replyText;
+        } catch (Resources.NotFoundException e) {
+            return "[Outside my working hours] " + replyText;
+        }
+    }
+
+    /** Persist a "no reply sent" log row for SUPPRESS/ESCALATE so Inbox can render it. */
+    private void logSuppressed(StatusBarNotification sbn,
+                               ClassificationResult result,
+                               CategoryAction action,
+                               String incomingBody) {
+        getDbUtils().logReply(sbn,
+                NotificationUtils.getTitle(sbn),
+                /*repliedMsg=*/ null,
+                result,
+                action,
+                /*wasReplied=*/ false,
+                incomingBody);
     }
 
     private void fetchAiReply(StatusBarNotification sbn, NotificationWear notificationWear, String incomingMessage, String fallbackReplyText) {
