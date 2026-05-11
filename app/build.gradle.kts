@@ -6,6 +6,22 @@ plugins {
     id("jacoco")
 }
 
+// Read backend/.env at configure time so the URL + bearer token are baked
+// into BuildConfig. Lets us ship a debug APK that's pre-configured against
+// a known local backend without making the user type them into Settings.
+val backendEnv: Map<String, String> = run {
+    val envFile = rootProject.file("backend/.env")
+    if (!envFile.exists()) emptyMap() else envFile.readLines()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains('=') }
+        .associate {
+            val (k, v) = it.split('=', limit = 2)
+            k.trim() to v.trim().trim('"').trim('\'')
+        }
+}
+val defaultBackendUrl: String = backendEnv["BACKEND_URL"] ?: ""
+val defaultBackendToken: String = backendEnv["DEMO_TOKEN"] ?: ""
+
 android {
     compileSdk = 35
 
@@ -16,6 +32,9 @@ android {
         targetSdk = 35
         versionCode = 36
         versionName = "1.36"
+
+        buildConfigField("String", "BACKEND_URL_DEFAULT", "\"${defaultBackendUrl}\"")
+        buildConfigField("String", "BACKEND_TOKEN_DEFAULT", "\"${defaultBackendToken}\"")
 
         javaCompileOptions {
             annotationProcessorOptions {

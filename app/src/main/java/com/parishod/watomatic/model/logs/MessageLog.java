@@ -1,6 +1,7 @@
 package com.parishod.watomatic.model.logs;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
@@ -23,28 +24,36 @@ public class MessageLog {
     private int id;
     @NonNull
     private int index;
+    @Nullable
     @ColumnInfo(name = "notif_id")
     private String notifId;
+    @Nullable
     @ColumnInfo(name = "notif_title")
     private String notifTitle;
     @ColumnInfo(name = "notif_arrived_time")
     private long notifArrivedTime;
     @ColumnInfo(name = "notif_is_replied")
     private boolean notifIsReplied;
+    @Nullable
     @ColumnInfo(name = "notif_replied_msg")
     private String notifRepliedMsg;
     @ColumnInfo(name = "notif_reply_time")
     private long notifReplyTime;
 
     // ReplyMind v3 schema additions — all nullable so the v2 → v3 ALTER TABLE migration succeeds.
+    @Nullable
     @ColumnInfo(name = "category")
     private String category;
+    @Nullable
     @ColumnInfo(name = "confidence")
     private Float confidence;
+    @Nullable
     @ColumnInfo(name = "action_taken")
     private String actionTaken;
+    @Nullable
     @ColumnInfo(name = "notif_body_snippet")
     private String notifBodySnippet;
+    @Nullable
     @ColumnInfo(name = "sentiment")
     private String sentiment;
 
@@ -79,19 +88,21 @@ public class MessageLog {
         this.index = index;
     }
 
+    @Nullable
     public String getNotifId() {
         return notifId;
     }
 
-    public void setNotifId(String notifId) {
+    public void setNotifId(@Nullable String notifId) {
         this.notifId = notifId;
     }
 
+    @Nullable
     public String getNotifTitle() {
         return notifTitle;
     }
 
-    public void setNotifTitle(String notifTitle) {
+    public void setNotifTitle(@Nullable String notifTitle) {
         this.notifTitle = notifTitle;
     }
 
@@ -111,11 +122,12 @@ public class MessageLog {
         this.notifIsReplied = notifIsReplied;
     }
 
+    @Nullable
     public String getNotifRepliedMsg() {
         return notifRepliedMsg;
     }
 
-    public void setNotifRepliedMsg(String notifRepliedMsg) {
+    public void setNotifRepliedMsg(@Nullable String notifRepliedMsg) {
         this.notifRepliedMsg = notifRepliedMsg;
     }
 
@@ -127,18 +139,23 @@ public class MessageLog {
         this.notifReplyTime = notifReplyTime;
     }
 
+    @Nullable
     public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
+    public void setCategory(@Nullable String category) { this.category = category; }
 
+    @Nullable
     public Float getConfidence() { return confidence; }
-    public void setConfidence(Float confidence) { this.confidence = confidence; }
+    public void setConfidence(@Nullable Float confidence) { this.confidence = confidence; }
 
+    @Nullable
     public String getActionTaken() { return actionTaken; }
-    public void setActionTaken(String actionTaken) { this.actionTaken = actionTaken; }
+    public void setActionTaken(@Nullable String actionTaken) { this.actionTaken = actionTaken; }
 
+    @Nullable
     public String getNotifBodySnippet() { return notifBodySnippet; }
-    public void setNotifBodySnippet(String notifBodySnippet) { this.notifBodySnippet = notifBodySnippet; }
+    public void setNotifBodySnippet(@Nullable String notifBodySnippet) { this.notifBodySnippet = notifBodySnippet; }
 
+    @Nullable
     public String getSentiment() { return sentiment; }
-    public void setSentiment(String sentiment) { this.sentiment = sentiment; }
+    public void setSentiment(@Nullable String sentiment) { this.sentiment = sentiment; }
 }

@@ -11,6 +11,7 @@ import androidx.security.crypto.MasterKeys;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.parishod.watomatic.BuildConfig;
 import com.parishod.watomatic.R;
 import com.parishod.watomatic.model.App;
 import com.parishod.watomatic.model.utils.AppUtils;
@@ -962,9 +963,21 @@ public class PreferencesManager {
     }
 
     // === Local ReplyMind backend (FastAPI on user's laptop) ===
+    //
+    // URL + bearer token can come from two places:
+    //   1. The user's saved Settings (highest priority)
+    //   2. backend/.env baked into BuildConfig at compile time (fallback)
+    // The second path lets the demo work after a fresh install without
+    // re-typing the URL/token. The enabled toggle defaults to true whenever
+    // BuildConfig provides usable defaults so the cascade actually fires.
+
+    private static boolean hasBakedDefaults() {
+        return !BuildConfig.BACKEND_URL_DEFAULT.isEmpty()
+                && !BuildConfig.BACKEND_TOKEN_DEFAULT.isEmpty();
+    }
 
     public boolean isBackendEnabled() {
-        return _sharedPrefs.getBoolean(KEY_BACKEND_ENABLED, false);
+        return _sharedPrefs.getBoolean(KEY_BACKEND_ENABLED, hasBakedDefaults());
     }
 
     public void setBackendEnabled(boolean enabled) {
@@ -974,7 +987,9 @@ public class PreferencesManager {
     }
 
     public String getBackendUrl() {
-        return _sharedPrefs.getString(KEY_BACKEND_URL, "");
+        String stored = _sharedPrefs.getString(KEY_BACKEND_URL, "");
+        if (stored != null && !stored.isEmpty()) return stored;
+        return BuildConfig.BACKEND_URL_DEFAULT;
     }
 
     public void saveBackendUrl(String url) {
@@ -985,8 +1000,12 @@ public class PreferencesManager {
 
     /** Bearer token is sensitive — stored in encrypted prefs alongside API keys. */
     public String getBackendToken() {
-        if (_encryptedSharedPrefs == null) return null;
-        return _encryptedSharedPrefs.getString(KEY_BACKEND_TOKEN, null);
+        if (_encryptedSharedPrefs != null) {
+            String stored = _encryptedSharedPrefs.getString(KEY_BACKEND_TOKEN, null);
+            if (stored != null && !stored.isEmpty()) return stored;
+        }
+        return BuildConfig.BACKEND_TOKEN_DEFAULT.isEmpty()
+                ? null : BuildConfig.BACKEND_TOKEN_DEFAULT;
     }
 
     public void saveBackendToken(String token) {
