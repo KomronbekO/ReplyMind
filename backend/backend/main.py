@@ -70,6 +70,17 @@ def classify(req: ClassifyRequest) -> ClassifyResponse:
 
     result = classify_message(req)
     result.latency_ms = int((time.perf_counter() - t0) * 1000)
+    # Demo-friendly single-line trace so the audience watching `tail -f` on
+    # the backend can see each request resolve as one readable row.
+    log.info(
+        "/classify  user=%s  sender=%s  msg=%r  ->  %s  conf=%.2f  %dms",
+        req.user_id[:8],
+        (req.sender or "")[:24],
+        (req.message[:60] + "…") if len(req.message) > 60 else req.message,
+        result.category_id,
+        float(result.confidence),
+        result.latency_ms,
+    )
     # opportunistically persist a copy of the message for future RAG retrieval
     db.insert_messages(
         req.user_id,
