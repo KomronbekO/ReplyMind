@@ -590,4 +590,31 @@
     <string name="quota_exhausted_message">Your quota has been completed. Please upgrade to a higher plan to continue using the service.</string>
     <string name="quota_exhausted_message_highest_plan">Your quota has been completed. It will renew on %1$s.</string>
     <string name="upgrade_now">Upgrade</string>
+
+    <!-- ReplyMind: Local backend (B5) -->
+    <string name="preference_category_backend_label">Local backend (RAG + ANN)</string>
+    <string name="pref_backend_enabled" translatable="false">pref_backend_enabled</string>
+    <string name="pref_backend_url" translatable="false">pref_backend_url</string>
+    <string name="pref_backend_token" translatable="false">pref_backend_token_pref_id</string>
+    <string name="pref_backend_test" translatable="false">pref_backend_test</string>
+    <string name="backend_enabled_title">Use local backend</string>
+    <string name="backend_enabled_summary">Route classification through your self-hosted FastAPI server before BYOK.</string>
+    <string name="backend_url_title">Backend URL</string>
+    <string name="backend_url_summary">e.g. http://10.0.2.2:8000 (emulator) or http://192.168.1.x:8000 (LAN)</string>
+    <string name="backend_url_dialog_title">Enter backend URL</string>
+    <string name="backend_token_title">Bearer token</string>
+    <string name="backend_token_summary">Stored encrypted on-device. Tap to update.</string>
+    <string name="backend_token_dialog_title">Backend bearer token</string>
+    <string name="backend_token_set">Token set</string>
+    <string name="backend_token_unset">Not configured</string>
+    <string name="backend_test_title">Test connection</string>
+    <string name="backend_test_summary">Hit /healthz with the current URL and token.</string>
+    <string name="backend_test_ok">Connected (model: %1$s)</string>
+    <string name="backend_test_fail">Connection failed: %1$s</string>
+    <string name="backend_test_missing">Set URL and token first.</string>
+    <string name="pref_backend_sync_history" translatable="false">pref_backend_sync_history</string>
+    <string name="backend_sync_history_title">Sync local history</string>
+    <string name="backend_sync_history_summary">Send recent messages so RAG has context from message #1.</string>
+    <string name="backend_sync_history_ok">Synced %1$d rows to backend.</string>
+    <string name="backend_sync_history_fail">Sync failed: %1$s</string>
 </resources>

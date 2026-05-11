@@ -78,9 +78,48 @@ public class NotificationService extends NotificationListenerService {
 
     private MessageClassifier getClassifier() {
         if (classifier == null) {
-            classifier = new LlmMessageClassifier(getApplicationContext());
+            // Cascade: local backend → BYOK LLM → template-only.
+            MessageClassifier templateLast =
+                    new com.parishod.watomatic.model.classifier.TemplateClassifier();
+            MessageClassifier llmThenTemplate = new ChainingClassifier(
+                    new LlmMessageClassifier(getApplicationContext()), templateLast);
+            classifier = new com.parishod.watomatic.model.classifier.BackendMessageClassifier(
+                    getApplicationContext(), llmThenTemplate);
         }
         return classifier;
+    }
+
+    /**
+     * Tiny adapter that lets {@link LlmMessageClassifier} fall back to a template-only
+     * classifier when BYOK isn't configured. {@link LlmMessageClassifier#isAvailable()} is
+     * the gate; if false we hop straight to the fallback.
+     */
+    private static final class ChainingClassifier implements MessageClassifier {
+        private final MessageClassifier primary;
+        private final MessageClassifier fallback;
+
+        ChainingClassifier(MessageClassifier primary, MessageClassifier fallback) {
+            this.primary = primary;
+            this.fallback = fallback;
+        }
+
+        @Override public boolean isAvailable() {
+            return primary.isAvailable() || (fallback != null && fallback.isAvailable());
+        }
+
+        @Override public void classify(@androidx.annotation.NonNull String senderTitle,
+                                       @androidx.annotation.NonNull String packageName,
+                                       @androidx.annotation.NonNull String incomingMessage,
+                                       @androidx.annotation.NonNull Callback callback) {
+            if (primary.isAvailable()) {
+                primary.classify(senderTitle, packageName, incomingMessage, callback);
+            } else if (fallback != null) {
+                fallback.classify(senderTitle, packageName, incomingMessage, callback);
+            } else {
+                callback.onResult(com.parishod.watomatic.model.classifier.ClassificationResult
+                        .fallback("no_classifier_available"));
+            }
+        }
     }
 
     private CategoryActionRouter getRouter() {

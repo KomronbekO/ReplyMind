@@ -3,13 +3,27 @@ package com.parishod.watomatic.fragment;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SwitchPreference;
+
+import com.parishod.watomatic.network.AtomaticBackendGateway;
+import com.parishod.watomatic.network.AtomaticBackendService;
+import com.parishod.watomatic.network.model.backend.HealthResponse;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.parishod.watomatic.BuildConfig;
@@ -134,6 +148,8 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             });
         }
 
+        wireBackendPreferences();
+
         // Account/Login preference
         Preference accountPref = findPreference(getString(R.string.pref_account));
         if(BuildConfig.FLAVOR.equals("Default")){
@@ -157,6 +173,152 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                 return true;
             });
         }
+    }
+
+    private void wireBackendPreferences() {
+        final PreferencesManager prefs = PreferencesManager.getPreferencesInstance(getContext());
+
+        SwitchPreference enabledPref = findPreference(getString(R.string.pref_backend_enabled));
+        if (enabledPref != null) {
+            enabledPref.setChecked(prefs.isBackendEnabled());
+            enabledPref.setOnPreferenceChangeListener((p, newValue) -> {
+                prefs.setBackendEnabled(Boolean.TRUE.equals(newValue));
+                return true;
+            });
+        }
+
+        EditTextPreference urlPref = findPreference(getString(R.string.pref_backend_url));
+        if (urlPref != null) {
+            urlPref.setText(prefs.getBackendUrl());
+            urlPref.setSummaryProvider(p ->
+                    isBlank(prefs.getBackendUrl())
+                            ? getString(R.string.backend_url_summary)
+                            : prefs.getBackendUrl());
+            urlPref.setOnPreferenceChangeListener((p, newValue) -> {
+                prefs.saveBackendUrl(newValue == null ? "" : newValue.toString());
+                return true;
+            });
+        }
+
+        Preference tokenPref = findPreference(getString(R.string.pref_backend_token));
+        if (tokenPref != null) {
+            tokenPref.setSummary(isBlank(prefs.getBackendToken())
+                    ? getString(R.string.backend_token_unset)
+                    : getString(R.string.backend_token_set));
+            tokenPref.setOnPreferenceClickListener(p -> {
+                showBackendTokenDialog(prefs, tokenPref);
+                return true;
+            });
+        }
+
+        Preference testPref = findPreference(getString(R.string.pref_backend_test));
+        if (testPref != null) {
+            testPref.setOnPreferenceClickListener(p -> {
+                runBackendHealthCheck(prefs);
+                return true;
+            });
+        }
+
+        Preference syncPref = findPreference(getString(R.string.pref_backend_sync_history));
+        if (syncPref != null) {
+            syncPref.setOnPreferenceClickListener(p -> {
+                runBackendHistorySync();
+                return true;
+            });
+        }
+    }
+
+    private void runBackendHistorySync() {
+        Toast.makeText(requireContext(), "Syncing history…", Toast.LENGTH_SHORT).show();
+        com.parishod.watomatic.network.BackendHistorySync.runOnce(
+                requireContext(),
+                new com.parishod.watomatic.network.BackendHistorySync.Callback() {
+                    @Override
+                    public void onSynced(int rowsSent) {
+                        if (getActivity() == null) return;
+                        requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(),
+                                getString(R.string.backend_sync_history_ok, rowsSent),
+                                Toast.LENGTH_LONG).show());
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull String reason) {
+                        if (getActivity() == null) return;
+                        requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(),
+                                getString(R.string.backend_sync_history_fail, reason),
+                                Toast.LENGTH_LONG).show());
+                    }
+                });
+    }
+
+    private void showBackendTokenDialog(@NonNull PreferencesManager prefs, @NonNull Preference tokenPref) {
+        EditText input = new EditText(requireContext());
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        input.setHint("Bearer token");
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.backend_token_dialog_title)
+                .setView(input)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    String token = input.getText() == null ? "" : input.getText().toString().trim();
+                    if (token.isEmpty()) {
+                        prefs.deleteBackendToken();
+                        tokenPref.setSummary(getString(R.string.backend_token_unset));
+                    } else {
+                        prefs.saveBackendToken(token);
+                        tokenPref.setSummary(getString(R.string.backend_token_set));
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void runBackendHealthCheck(@NonNull PreferencesManager prefs) {
+        String url = prefs.getBackendUrl();
+        String token = prefs.getBackendToken();
+        if (isBlank(url) || isBlank(token)) {
+            Toast.makeText(requireContext(), R.string.backend_test_missing, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        AtomaticBackendGateway gateway = new AtomaticBackendGateway(prefs);
+        AtomaticBackendService service = gateway.serviceForUrl(url);
+        if (service == null) {
+            Toast.makeText(requireContext(),
+                    getString(R.string.backend_test_fail, "bad URL"),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        Toast.makeText(requireContext(), "Pinging…", Toast.LENGTH_SHORT).show();
+        service.healthz().enqueue(new Callback<HealthResponse>() {
+            @Override
+            public void onResponse(@NonNull Call<HealthResponse> call,
+                                   @NonNull Response<HealthResponse> response) {
+                if (getActivity() == null) return;
+                if (response.isSuccessful() && response.body() != null) {
+                    HealthResponse h = response.body();
+                    String modelStatus = h.modelLoaded ? "loaded" : "not loaded";
+                    Toast.makeText(requireContext(),
+                            getString(R.string.backend_test_ok, modelStatus),
+                            Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(requireContext(),
+                            getString(R.string.backend_test_fail, "HTTP " + response.code()),
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<HealthResponse> call, @NonNull Throwable t) {
+                if (getActivity() == null) return;
+                String msg = t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName();
+                Toast.makeText(requireContext(),
+                        getString(R.string.backend_test_fail, msg),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
     }
 
     private void restartApp() {

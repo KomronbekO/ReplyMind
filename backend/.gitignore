@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/*.db
+data/*.csv
+data/*.json
+data/raw/
+data/chroma/
+data/test_chroma/
+data/_embed_cache/
+models/*.pt
+models/*.json
+.pytest_cache/
+*.egg-info/

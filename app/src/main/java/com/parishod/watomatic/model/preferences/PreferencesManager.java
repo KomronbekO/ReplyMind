@@ -89,6 +89,12 @@ public class PreferencesManager {
     private final String KEY_VACATION_UNTIL = "pref_vacation_until";
     private final String KEY_VACATION_MESSAGE = "pref_vacation_message";
 
+    // ReplyMind backend (B4): user can point the classifier at a self-hosted FastAPI service.
+    private final String KEY_BACKEND_URL = "pref_backend_url";
+    private final String KEY_BACKEND_TOKEN = "pref_backend_token";   // encrypted
+    private final String KEY_BACKEND_ENABLED = "pref_backend_enabled";
+    private final String KEY_BACKEND_USER_ID = "pref_backend_user_id";
+
     private static PreferencesManager _instance;
     private final SharedPreferences _sharedPrefs;
     private SharedPreferences _encryptedSharedPrefs;
@@ -953,5 +959,60 @@ public class PreferencesManager {
         SharedPreferences.Editor editor = _sharedPrefs.edit();
         editor.putString(KEY_VACATION_MESSAGE, message != null ? message : "");
         editor.apply();
+    }
+
+    // === Local ReplyMind backend (FastAPI on user's laptop) ===
+
+    public boolean isBackendEnabled() {
+        return _sharedPrefs.getBoolean(KEY_BACKEND_ENABLED, false);
+    }
+
+    public void setBackendEnabled(boolean enabled) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putBoolean(KEY_BACKEND_ENABLED, enabled);
+        editor.apply();
+    }
+
+    public String getBackendUrl() {
+        return _sharedPrefs.getString(KEY_BACKEND_URL, "");
+    }
+
+    public void saveBackendUrl(String url) {
+        SharedPreferences.Editor editor = _sharedPrefs.edit();
+        editor.putString(KEY_BACKEND_URL, url != null ? url.trim() : "");
+        editor.apply();
+    }
+
+    /** Bearer token is sensitive — stored in encrypted prefs alongside API keys. */
+    public String getBackendToken() {
+        if (_encryptedSharedPrefs == null) return null;
+        return _encryptedSharedPrefs.getString(KEY_BACKEND_TOKEN, null);
+    }
+
+    public void saveBackendToken(String token) {
+        if (_encryptedSharedPrefs == null) {
+            Log.e("PreferencesManager", "EncryptedSharedPreferences not initialized. Cannot save backend token.");
+            return;
+        }
+        SharedPreferences.Editor editor = _encryptedSharedPrefs.edit();
+        editor.putString(KEY_BACKEND_TOKEN, token);
+        editor.apply();
+    }
+
+    public void deleteBackendToken() {
+        if (_encryptedSharedPrefs == null) return;
+        _encryptedSharedPrefs.edit().remove(KEY_BACKEND_TOKEN).apply();
+    }
+
+    /**
+     * Stable per-device user id for the backend. Generated lazily and stored — the
+     * backend uses this to isolate vector-store collections per user.
+     */
+    public String getBackendUserId() {
+        String id = _sharedPrefs.getString(KEY_BACKEND_USER_ID, null);
+        if (id != null && !id.isEmpty()) return id;
+        id = java.util.UUID.randomUUID().toString();
+        _sharedPrefs.edit().putString(KEY_BACKEND_USER_ID, id).apply();
+        return id;
     }
 }

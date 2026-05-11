@@ -50,4 +50,8 @@ public interface MessageLogsDao {
 
     @Query("SELECT COUNT(*) FROM message_logs WHERE notif_is_replied = 1 AND notif_reply_time >= :sinceMs")
     LiveData<Integer> repliesCount(long sinceMs);
+
+    /** Synchronous read used by the backend history-sync job. Caller must run on a background thread. */
+    @Query("SELECT * FROM message_logs ORDER BY notif_arrived_time DESC LIMIT :limit")
+    List<MessageLog> recentSync(int limit);
 }

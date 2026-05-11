@@ -81,4 +81,35 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/preference_category_backend_label">
+
+        <SwitchPreference
+            android:key="@string/pref_backend_enabled"
+            android:title="@string/backend_enabled_title"
+            android:summary="@string/backend_enabled_summary" />
+
+        <EditTextPreference
+            android:key="@string/pref_backend_url"
+            android:title="@string/backend_url_title"
+            android:summary="@string/backend_url_summary"
+            android:dialogTitle="@string/backend_url_dialog_title"
+            android:hint="http://10.0.2.2:8000" />
+
+        <Preference
+            android:key="@string/pref_backend_token"
+            android:title="@string/backend_token_title"
+            android:summary="@string/backend_token_summary" />
+
+        <Preference
+            android:key="@string/pref_backend_test"
+            android:title="@string/backend_test_title"
+            android:summary="@string/backend_test_summary" />
+
+        <Preference
+            android:key="@string/pref_backend_sync_history"
+            android:title="@string/backend_sync_history_title"
+            android:summary="@string/backend_sync_history_summary" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>
