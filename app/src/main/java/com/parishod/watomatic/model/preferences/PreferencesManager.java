@@ -904,7 +904,10 @@ public class PreferencesManager {
     }
 
     public boolean isKeepMessageSnippetsEnabled() {
-        return _sharedPrefs.getBoolean(KEY_KEEP_MESSAGE_SNIPPETS, false);
+        // Demo builds (with backend defaults from .env) need the message body in
+        // the Inbox so you can see what was classified. Public builds keep the
+        // privacy-preserving default of OFF.
+        return _sharedPrefs.getBoolean(KEY_KEEP_MESSAGE_SNIPPETS, hasBakedDefaults());
     }
 
     public void setKeepMessageSnippetsEnabled(boolean enabled) {
