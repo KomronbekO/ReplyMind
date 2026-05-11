@@ -55,7 +55,7 @@ class MessageLogTest {
     fun `constructor generates non-null notifId`() {
         val log = buildLog()
         assertNotNull(log.notifId)
-        assertTrue(log.notifId.isNotEmpty())
+        assertTrue(log.notifId!!.isNotEmpty())
     }
 
     @Test
@@ -126,6 +126,6 @@ class MessageLogTest {
         val log = buildLog()
         // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
         val uuidRegex = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
-        assertTrue(log.notifId.matches(uuidRegex))
+        assertTrue(log.notifId!!.matches(uuidRegex))
     }
 }

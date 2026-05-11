@@ -307,36 +307,42 @@ public class NotificationService extends NotificationListenerService {
                                             String fallbackReplyText,
                                             ClassificationResult classification) {
         PreferencesManager preferencesManager = PreferencesManager.getPreferencesInstance(this);
-        boolean shouldUseAI = false;
 
-        if (preferencesManager.isAutomaticAiRepliesEnabled()) {
-            shouldUseAI = preferencesManager.isSubscriptionActive()
-                    && incomingMessage != null && !incomingMessage.trim().isEmpty();
-            Log.d(TAG, "Automatic AI mode - Subscription active: " + preferencesManager.isSubscriptionActive());
-        } else if (preferencesManager.isByokRepliesEnabled()) {
-            String apiKey = preferencesManager.getOpenAIApiKey();
-            shouldUseAI = apiKey != null && !apiKey.trim().isEmpty()
-                    && !apiKey.equals("PENDING_CONFIGURATION")
-                    && incomingMessage != null && !incomingMessage.trim().isEmpty();
-            Log.d(TAG, "BYOK mode - API key configured: " + (apiKey != null && !apiKey.trim().isEmpty()));
+        // 1. "Automatic AI" mode = use the reply the local backend already
+        //    generated as part of the classify call. No subscription, no
+        //    external LLM call. Falls through if no suggestion is available.
+        if (preferencesManager.isAutomaticAiRepliesEnabled()
+                && classification != null
+                && classification.getSuggestedReply() != null
+                && !classification.getSuggestedReply().trim().isEmpty()) {
+            Log.d(TAG, "Automatic AI: using backend-suggested reply");
+            sendActualReplyWithMeta(sbn, notificationWear,
+                    classification.getSuggestedReply(),
+                    classification, CategoryAction.REPLY_DEFAULT, incomingMessage);
+            return;
         }
 
-        // Note: classification metadata is recorded by the AI fetch / sendActualReply path
-        // through the dbUtils.logReply overload only when we use the metadata path.
-        // For the existing AI-fetch flow, we still log via the legacy dbUtils.logReply(sbn,title)
-        // call inside sendActualReply — classification metadata for that path is captured
-        // via sendActualReplyWithMeta-style callers introduced for category-templates and suppression.
-        if (shouldUseAI) {
-            Log.d(TAG, "AI conditions met. Attempting to get AI reply.");
-            fetchAiReply(sbn, notificationWear, incomingMessage, fallbackReplyText);
-        } else {
-            Log.d(TAG, "AI conditions not met. Using default reply.");
-            if (classification != null) {
-                sendActualReplyWithMeta(sbn, notificationWear, fallbackReplyText,
-                        classification, CategoryAction.REPLY_DEFAULT, incomingMessage);
-            } else {
-                sendActualReply(sbn, notificationWear, fallbackReplyText);
+        // 2. BYOK still works — for users who provided their own OpenAI-
+        //    compatible key in Settings → Other AI.
+        if (preferencesManager.isByokRepliesEnabled()) {
+            String apiKey = preferencesManager.getOpenAIApiKey();
+            boolean haveKey = apiKey != null && !apiKey.trim().isEmpty()
+                    && !apiKey.equals("PENDING_CONFIGURATION");
+            boolean haveBody = incomingMessage != null && !incomingMessage.trim().isEmpty();
+            Log.d(TAG, "BYOK mode - API key configured: " + haveKey);
+            if (haveKey && haveBody) {
+                fetchAiReply(sbn, notificationWear, incomingMessage, fallbackReplyText);
+                return;
             }
+        }
+
+        // 3. Plain canned reply, with classifier metadata persisted if we have it.
+        Log.d(TAG, "AI conditions not met. Using default reply.");
+        if (classification != null) {
+            sendActualReplyWithMeta(sbn, notificationWear, fallbackReplyText,
+                    classification, CategoryAction.REPLY_DEFAULT, incomingMessage);
+        } else {
+            sendActualReply(sbn, notificationWear, fallbackReplyText);
         }
     }
 

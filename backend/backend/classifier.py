@@ -129,6 +129,59 @@ def _synthesise_reasoning(top_cat: str, confidence: float, evidence) -> str:
     return f"closest match in your history was a {top_cat}-style message"
 
 
+# Per-category reply templates keyed by tone. Two placeholders supported:
+#   {sender}      — incoming sender name (e.g. "Mum"), or "" if unknown
+#   {greeting}    — "Hey {sender}" / "Hi {sender}" / "" depending on tone
+#
+# urgent and the two suppress-buckets (promotional / spam) return an empty
+# string — the routing layer on the client side already suppresses or
+# escalates those, but a blank reply is the safest signal to any caller that
+# uses suggested_reply directly.
+_REPLY_TEMPLATES: dict[str, dict[str, str]] = {
+    "CASUAL": {
+        "urgent": "",
+        "work": "Hey {sender}, thanks for the heads-up — I'll loop back on this shortly.",
+        "family_friends": "Hey {sender}! Saw your message, will reply properly soon.",
+        "promotional": "",
+        "spam": "",
+        "other": "Hey {sender}, thanks for the message — I'll get back to you soon.",
+    },
+    "PROFESSIONAL": {
+        "urgent": "",
+        "work": "Hello {sender}, thank you for reaching out. I will review and respond shortly.",
+        "family_friends": "Hello {sender}, thank you for your message. I'll get back to you when I can.",
+        "promotional": "",
+        "spam": "",
+        "other": "Hello {sender}, thank you for your message. I will reply as soon as possible.",
+    },
+    "BRIEF": {
+        "urgent": "",
+        "work": "Got it {sender}, will reply soon.",
+        "family_friends": "Hey {sender}, will reply soon.",
+        "promotional": "",
+        "spam": "",
+        "other": "Thanks {sender}, will reply soon.",
+    },
+}
+
+
+def _generate_reply(category: str, sender: str, profile) -> str:
+    """Compose a reply text from the (category, tone) lookup table.
+
+    Returns "" for urgent/promotional/spam — the client suppresses those at the
+    routing layer; an empty suggested_reply is the explicit signal."""
+    tone = getattr(profile, "tone", "CASUAL") or "CASUAL"
+    table = _REPLY_TEMPLATES.get(tone, _REPLY_TEMPLATES["CASUAL"])
+    template = table.get(category, table["other"])
+    if not template:
+        return ""
+    # Strip pronoun if sender is unknown so the reply reads naturally.
+    clean_sender = (sender or "").strip()
+    if not clean_sender or clean_sender.lower() in {"unknown", "anonymous"}:
+        return template.replace("{sender}, ", "").replace(" {sender}", "").replace("{sender}", "there")
+    return template.format(sender=clean_sender)
+
+
 def classify_message(req: ClassifyRequest) -> ClassifyResponse:
     model, idx_to_label = _load_model()
 
@@ -186,6 +239,7 @@ def classify_message(req: ClassifyRequest) -> ClassifyResponse:
                 backstop_reason = None
 
     reasoning = backstop_reason or _synthesise_reasoning(top_label, confidence, evidence)
+    suggested_reply = _generate_reply(top_label, req.sender or "", req.profile)
 
     response = ClassifyResponse(
         category_id=top_label,
@@ -194,6 +248,7 @@ def classify_message(req: ClassifyRequest) -> ClassifyResponse:
         rag_evidence=evidence,
         cold_start=cold_start,
         latency_ms=0,
+        suggested_reply=suggested_reply,
     )
 
     # Persist the current message so the next call benefits.

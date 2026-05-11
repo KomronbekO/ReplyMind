@@ -509,7 +509,7 @@
 
     <!-- New UI strings for reply mode selection -->
     <string name="manual_replies">Manual Replies</string>
-    <string name="automatic_ai">Automatic AI</string>
+    <string name="automatic_ai">ReplyMind Backend AI</string>
     <string name="expand">Expand</string>
     <string name="selected">Selected</string>
     <string name="status">Status</string>

@@ -478,137 +478,20 @@ class CustomReplyEditorActivity : BaseActivity(), SharedPreferences.OnSharedPref
             automaticAiExpandedContent?.visibility = android.view.View.VISIBLE
             automaticAiCheckIcon?.visibility = android.view.View.VISIBLE
 
-            // Update badge and status based on subscription
-            if (isProUser) {
-                // Configured state - user has subscription
-
-                // Get subscription details
-                val productName = preferencesManager?.subscriptionProductName
-                val planType = preferencesManager?.subscriptionPlanType
-                val isAutoRenewing = preferencesManager?.isSubscriptionAutoRenewing ?: false
-
-                // Get plan-specific UI configuration based on auto-renewal status
-                val planConfig = getPlanUIConfig(isAutoRenewing)
-
-                // Apply badge configuration
-                automaticAiTag?.text = planConfig.badgeText
-                automaticAiTag?.setBackgroundResource(planConfig.badgeBackgroundRes)
-                // Hide the tag if it shows FREE
-                automaticAiTag?.visibility = if (planConfig.badgeText == getString(R.string.badge_free)) android.view.View.GONE else android.view.View.VISIBLE
-
-                automaticAiStatusIcon?.setImageResource(R.drawable.ic_task_alt)
-                automaticAiStatusIcon?.setColorFilter(0xFF34C759.toInt())
-
-                automaticAiStatusText?.text = "Status: Configured"
-                automaticAiStatusText?.setTextColor(0xFF34C759.toInt())
-                automaticAiStatusText?.visibility = android.view.View.VISIBLE
-
-                automaticAiNotSubscribedSection?.visibility = android.view.View.GONE
-                automaticAiSubscribedSection?.visibility = android.view.View.VISIBLE
-
-                // Show "Upgrade Plan" button for any plan that is NOT the highest tier (Pro)
-                val productId = preferencesManager?.subscriptionProductId ?: ""
-                val isProPlan = productId.contains("pro", ignoreCase = true)
-                btnUpgradePlan?.visibility = if (!isProPlan) android.view.View.VISIBLE else android.view.View.GONE
-
-                // Debug logging
-                android.util.Log.d("CustomReplyEditor", "Product Name: '$productName'")
-                android.util.Log.d("CustomReplyEditor", "Plan Type: '$planType'")
-                android.util.Log.d("CustomReplyEditor", "Auto-Renewing: $isAutoRenewing")
-                android.util.Log.d("CustomReplyEditor", "Badge: '${planConfig.badgeText}', Date Label: '${planConfig.dateLabel}'")
-
-                val displayName = if (!productName.isNullOrEmpty()) {
-                    // Use actual product name from Google Play
-                    android.util.Log.d("CustomReplyEditor", "Using product name: $productName")
-                    "$productName - Active"
-                } else {
-                    // Fallback: try to use plan type if available
-                    val fallbackName = when {
-                        !planType.isNullOrEmpty() -> {
-                            android.util.Log.d("CustomReplyEditor", "Using plan type fallback: $planType")
-                            "$planType - Active"
-                        }
-                        else -> {
-                            android.util.Log.d("CustomReplyEditor", "Using default fallback: Pro Plan")
-                            "Pro Plan - Active"
-                        }
-                    }
-                    fallbackName
-                }
-
-                android.util.Log.d("CustomReplyEditor", "Setting plan name to: '$displayName'")
-                subscriptionPlanName?.text = displayName
-
-                // Format renewal/expiry date with plan-specific label
-                val expiryTime = preferencesManager?.subscriptionExpiryTime ?: 0
-                if (expiryTime > 0) {
-                    val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-                    val dateStr = dateFormat.format(Date(expiryTime))
-                    subscriptionRenewalDate?.text = "${planConfig.dateLabel} $dateStr"
-                } else {
-                    subscriptionRenewalDate?.text = "Active subscription"
-                }
-
-                // Show remaining atoms
-                val remainingAtoms = preferencesManager?.remainingAtoms ?: -1
-                automaticAiRemainingReplies?.visibility = android.view.View.VISIBLE
-                if (remainingAtoms >= 0) {
-                    automaticAiRemainingReplies?.text = "Remaining Replies: $remainingAtoms"
-                    when {
-                        remainingAtoms == 0 -> {
-                            automaticAiRemainingReplies?.setTextColor(0xFFFF453A.toInt()) // Red
-                        }
-                        remainingAtoms < 10 -> {
-                            automaticAiRemainingReplies?.setTextColor(0xFFFF9F0A.toInt()) // Orange
-                        }
-                        else -> {
-                            // Default text color
-//                            automaticAiRemainingReplies?.setTextColor(getThemeColor(android.R.attr.textColorPrimary))
-                        }
-                    }
-                } else {
-                    automaticAiRemainingReplies?.text = "Remaining Atoms: N/A"
-//                    automaticAiRemainingReplies?.setTextColor(getThemeColor(android.R.attr.textColorPrimary))
-                }
-            } else {
-                // Not configured state - user needs subscription
-                automaticAiTag?.text = getString(R.string.badge_free)
-                automaticAiTag?.setBackgroundResource(R.drawable.bg_badge_gray)
-                // Hide the tag for FREE plan
-                automaticAiTag?.visibility = android.view.View.GONE
-
-                automaticAiStatusIcon?.setImageResource(R.drawable.ic_error_outline)
-                automaticAiStatusIcon?.setColorFilter(0xFFFF453A.toInt())
-
-                automaticAiStatusText?.text = "Status: Not Configured"
-                automaticAiStatusText?.setTextColor(0xFFFF453A.toInt()) // Red text for not configured
-                automaticAiStatusText?.visibility = android.view.View.VISIBLE
-
-                automaticAiNotSubscribedSection?.visibility = android.view.View.VISIBLE
-                automaticAiSubscribedSection?.visibility = android.view.View.GONE
-                
-                // Show remaining atoms even when not subscribed, but it might be --
-                val remainingAtoms = preferencesManager?.remainingAtoms ?: -1
-                automaticAiRemainingReplies?.visibility = android.view.View.GONE
-                /*if (remainingAtoms >= 0) {
-                    automaticAiRemainingReplies?.text = "Remaining Replies: $remainingAtoms"
-                    when {
-                        remainingAtoms == 0 -> {
-                            automaticAiRemainingReplies?.setTextColor(0xFFFF453A.toInt()) // Red
-                        }
-                        remainingAtoms < 10 -> {
-                            automaticAiRemainingReplies?.setTextColor(0xFFFF9F0A.toInt()) // Orange
-                        }
-                        else -> {
-                            // Default text color
-                            automaticAiRemainingReplies?.setTextColor(getThemeColor(android.R.attr.textColorSecondary))
-                        }
-                    }
-                } else {
-                    automaticAiRemainingReplies?.text = "Remaining Atoms: --"
-                    automaticAiRemainingReplies?.setTextColor(getThemeColor(android.R.attr.textColorSecondary))
-                }*/
-            }
+            // ReplyMind backend AI replaces the old subscription-gated flow.
+            // The reply is generated by the self-hosted FastAPI server bundled
+            // with the app, so the card is always "configured" — no upsell,
+            // no atom counter, no plan badge.
+            automaticAiTag?.visibility = android.view.View.GONE
+            automaticAiStatusIcon?.setImageResource(R.drawable.ic_task_alt)
+            automaticAiStatusIcon?.setColorFilter(0xFF34C759.toInt())
+            automaticAiStatusText?.text = "Powered by local ReplyMind backend"
+            automaticAiStatusText?.setTextColor(0xFF34C759.toInt())
+            automaticAiStatusText?.visibility = android.view.View.VISIBLE
+            automaticAiNotSubscribedSection?.visibility = android.view.View.GONE
+            automaticAiSubscribedSection?.visibility = android.view.View.GONE
+            automaticAiRemainingReplies?.visibility = android.view.View.GONE
+            btnUpgradePlan?.visibility = android.view.View.GONE
         } else {
             // Collapse Automatic AI card when not selected
             automaticAiExpandedContent?.visibility = android.view.View.GONE

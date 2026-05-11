@@ -57,10 +57,12 @@ public class BackendMessageClassifier implements MessageClassifier {
 
     @Override
     public boolean isAvailable() {
-        // The chain is available if any link in it is. We never disable the chain
-        // entirely — the template classifier always works.
-        return prefs.isClassificationEnabled()
-                && (gateway.isConfigured() || (fallback != null && fallback.isAvailable()));
+        // The chain runs when the user has either explicitly enabled smart
+        // classification OR turned on the backend-generated AI replies — the
+        // second mode needs a classification result to fetch its suggested
+        // reply, so it implies the cascade.
+        boolean wanted = prefs.isClassificationEnabled() || prefs.isAutomaticAiRepliesEnabled();
+        return wanted && (gateway.isConfigured() || (fallback != null && fallback.isAvailable()));
     }
 
     @Override
@@ -114,7 +116,8 @@ public class BackendMessageClassifier implements MessageClassifier {
                         body.confidence,
                         body.reasoning != null ? body.reasoning : "",
                         System.currentTimeMillis(),
-                        /*fallback=*/false));
+                        /*fallback=*/false,
+                        body.suggestedReply));
             }
 
             @Override

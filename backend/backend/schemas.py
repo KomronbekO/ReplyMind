@@ -51,6 +51,10 @@ class ClassifyResponse(BaseModel):
     rag_evidence: list[RagEvidenceItem] = Field(default_factory=list)
     cold_start: bool = False
     latency_ms: int = 0
+    # Backend-generated reply text. Empty when the chosen category's default
+    # action is SUPPRESS / ESCALATE (no reply should be sent). Tone follows
+    # profile.tone; falls back to a neutral template when no profile is given.
+    suggested_reply: str = ""
 
 
 class ProfileRequest(BaseModel):

@@ -11,14 +11,22 @@ public class ClassificationResult {
     private final String reasoning;
     private final long classifiedAtMs;
     private final boolean fallback;
+    /** Pre-generated reply text from the backend (or empty/null when none). */
+    private final String suggestedReply;
 
     public ClassificationResult(String categoryId, float confidence, String reasoning,
                                 long classifiedAtMs, boolean fallback) {
+        this(categoryId, confidence, reasoning, classifiedAtMs, fallback, null);
+    }
+
+    public ClassificationResult(String categoryId, float confidence, String reasoning,
+                                long classifiedAtMs, boolean fallback, String suggestedReply) {
         this.categoryId = categoryId;
         this.confidence = confidence;
         this.reasoning = reasoning;
         this.classifiedAtMs = classifiedAtMs;
         this.fallback = fallback;
+        this.suggestedReply = suggestedReply;
     }
 
     public static ClassificationResult fallback(String reason) {
@@ -31,4 +39,5 @@ public class ClassificationResult {
     public String getReasoning() { return reasoning; }
     public long getClassifiedAtMs() { return classifiedAtMs; }
     public boolean isFallback() { return fallback; }
+    public String getSuggestedReply() { return suggestedReply; }
 }
