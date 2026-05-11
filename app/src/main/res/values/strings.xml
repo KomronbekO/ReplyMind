@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">Atomatic</string>
+    <string name="app_name" translatable="false">ReplyMind</string>
     <string name="url_privacy_policy" translatable="false">https://adeekshith.github.io/watomatic/#/privacy-policy.md</string>
     <string name="adeekshith_twitter_handle" translatable="false">\@adeekshith</string>
     <string name="url_adeekshith_twitter" translatable="false">https://twitter.com/adeekshith</string>
@@ -45,12 +45,12 @@
     <!-- Custom message editor -->
     <string name="save">Save</string>
     <string name="tip_view_messages_from_fellow_users">🦩 <u>View templates from community and share yours too ➚</u></string>
-    <string name="append_watomatic_arribution_checkbox_label">Append Atomatic arribution to help spread the word</string>
-    <string name="sent_using_Watomatic">Sent using atomatic.app</string>
+    <string name="append_watomatic_arribution_checkbox_label">Append ReplyMind attribution to replies</string>
+    <string name="sent_using_Watomatic">Sent via ReplyMind</string>
 
-    <string name="share_app_text">I am using Atomatic to break away from messaging apps. Try it out: watomatic.app</string>
+    <string name="share_app_text">I am using ReplyMind for smart auto-replies on Android.</string>
     <string name="share">Share</string>
-    <string name="share_subject">Atomatic: Auto Reply for Messaging apps</string>
+    <string name="share_subject">ReplyMind: smart auto-reply for messaging apps</string>
     <string name="watomatic_community_label"><u>Community</u></string>
     <string name="watomatic_subreddit_label"><u>Let\'s discuss\nr/watomatic</u></string>
     <string name="watomatic_subreddit_url" translatable="false">https://www.reddit.com/r/watomatic</string>
@@ -82,8 +82,8 @@
     <string name="add_attribution_label">Add Attribution</string>
     <string name="enabled_apps_title">Enabled Apps</string>
     <string name="always_on_notification">Always-On notification</string>
-    <string name="display_persistent_notification_summary">Display a persistent notification to ensure Watomatic is not killed by the system</string>
-    <string name="enable_auto_start_summary">Some devices might need you to manually enable Auto start for Watomatic from device settings</string>
+    <string name="display_persistent_notification_summary">Display a persistent notification to ensure ReplyMind is not killed by the system</string>
+    <string name="enable_auto_start_summary">Some devices might need you to manually enable Auto start for ReplyMind from device settings</string>
 
     <!-- Local language names (non translatable) -->
     <string name="lang_en" translatable="false">English (en)</string>
@@ -150,7 +150,7 @@
     <!--Autostart Permission Dialog-->
     <string name="auto_start_permission_dialog_title">AutoStart Permission</string>
     <string name="running_in_the_background">Running in the background</string>
-    <string name="auto_start_permission_dialog_message">Enable \"Auto Start\" permission in device settings to allow Watomatic to start on device restart.</string>
+    <string name="auto_start_permission_dialog_message">Enable \"Auto Start\" permission in device settings to allow ReplyMind to start on device restart.</string>
     <string name="device_based_settings_message">Note: Settings may vary or may not be available based on your device</string>
     <string name="setting_not_available_for_device">This setting is not available or may not be needed for your device.</string>
     <string name="enable_auto_start_setting">Proceed</string>
@@ -287,7 +287,7 @@
     <string name="error_invalid_email">Invalid email address</string>
     <string name="error_password_required">Password is required</string>
     <string name="error_password_too_short">Password must be at least 6 characters</string>
-    <string name="welcome_message">Welcome to Atomatic</string>
+    <string name="welcome_message">Welcome to ReplyMind</string>
     <string name="login">Login</string>
     <string name="logout">Logout</string>
     <string name="profile">Profile</string>
@@ -323,7 +323,7 @@
     <string name="onboarding_permission_subtitle">ReplyMind needs to read your messaging-app notifications so it can reply on your behalf. Tap below to open Android settings.</string>
     <string name="onboarding_permission_open_settings">Open Notification Access</string>
     <string name="onboarding_permission_granted">✅ Access granted</string>
-    <string name="onboarding_permission_pending">⏳ Tap above, enable Atomatic, then return.</string>
+    <string name="onboarding_permission_pending">⏳ Tap above, enable ReplyMind, then return.</string>
 
     <string name="onboarding_profile_title">Tell ReplyMind about you</string>
     <string name="onboarding_profile_subtitle">The classifier uses this to weigh urgency and pick tone. Everything stays encrypted on your device.</string>
@@ -502,7 +502,7 @@
     <string name="your_custom_ai_features">Your Custom AI Features</string>
     <string name="manage_subscription">Manage Subscription</string>
     <string name="need_help_learn_more">Need help? Learn More</string>
-    <string name="atomatic_ai">Atomatic AI</string>
+    <string name="atomatic_ai">ReplyMind AI</string>
     <string name="managed_smart_responses">Managed smart responses</string>
     <string name="bring_your_own_key">Bring Your Own Key</string>
     <string name="use_external_llm_apis">Use external LLM APIs</string>

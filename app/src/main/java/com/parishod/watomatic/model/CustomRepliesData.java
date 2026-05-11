@@ -151,7 +151,7 @@ public class CustomRepliesData {
             try {
                 currentText += "\n\n" + RTL_ALIGN_INVISIBLE_CHAR + thisAppContext.getString(R.string.sent_using_Watomatic);
             } catch (android.content.res.Resources.NotFoundException e) {
-                currentText += "\n\n" + RTL_ALIGN_INVISIBLE_CHAR + "Sent using Watomatic";
+                currentText += "\n\n" + RTL_ALIGN_INVISIBLE_CHAR + "Sent via ReplyMind";
             }
         }
         return currentText;

@@ -62,7 +62,7 @@ public class ReplyService extends Service {
 
                 Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                         .setContentTitle("Sending Reply")
-                        .setContentText("Watomatic is replying...")
+                        .setContentText("ReplyMind is replying...")
                         .setSmallIcon(android.R.drawable.stat_notify_chat)
                         .setPriority(NotificationCompat.PRIORITY_LOW)
                         .build();

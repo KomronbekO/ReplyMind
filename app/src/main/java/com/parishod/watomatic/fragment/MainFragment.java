@@ -90,10 +90,6 @@ public class MainFragment extends Fragment implements DialogActionListener {
     private TextView replyCooldownDescription, messageTypeDescription, contactsSelectorDescription;
     private LinearLayout contactsFilterLL, messagesTypeLL, supportedAppsLL, replyCooldownLL;
     private TextView enabledAppsCount;
-    private final List<String> communityUrls = Arrays.asList("tg://resolve?domain=WatomaticApp",
-            "https://fosstodon.org/@watomatic",
-            "https://twitter.com/watomatic",
-            "https://www.reddit.com/r/watomatic");
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -208,10 +204,6 @@ public class MainFragment extends Fragment implements DialogActionListener {
                 Intent inboxIntent = new Intent(requireActivity(),
                         com.parishod.watomatic.activity.inbox.InboxActivity.class);
                 startActivity(inboxIntent);
-                return true;
-            } else if (itemId == R.id.navigation_community) {
-                // Handle community navigation
-                launchApp(communityUrls, getString(R.string.watomatic_subreddit_url));
                 return true;
             } else if (itemId == R.id.navigation_settings) {
                 // Handle settings navigation
