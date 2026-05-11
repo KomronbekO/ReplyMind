@@ -175,7 +175,12 @@ public class NotificationService extends NotificationListenerService {
                 if (dbUtils == null) {
                     dbUtils = new DbUtils(getApplicationContext());
                 }
-                dbUtils.logReply(sbn, NotificationUtils.getTitle(sbn));
+                // Persist the actual reply text we just sent (instead of
+                // the default-derived text). Keeps the Inbox row accurate
+                // for AI / BYOK replies that don't go through
+                // sendActualReplyWithMeta.
+                dbUtils.logReply(sbn, NotificationUtils.getTitle(sbn),
+                        replyText, null, null, true, null);
                 
                 // Use ReplyService to send the reply in foreground
                 /*Intent replyServiceIntent = new Intent(this, ReplyService.class);
@@ -516,10 +521,10 @@ public class NotificationService extends NotificationListenerService {
         if (name != null && !name.trim().isEmpty()) {
             sb.append("You are ").append(name.trim()).append(". ");
         }
-        String occ = p.getOccupation();
-        if (occ != null && !occ.trim().isEmpty()) {
-            sb.append("Your occupation: ").append(occ.trim()).append(". ");
-        }
+        // Note: occupation deliberately omitted from the prompt. Including it
+        // tempted gpt-4o-mini into 'as a software engineer AND an AI assistant'
+        // double-identity replies. The profile keeps the occupation in case
+        // a future prompt wants to use it differently.
         com.parishod.watomatic.model.classifier.UserProfile.Tone tone = p.getTone();
         if (tone != null) {
             String hint;
