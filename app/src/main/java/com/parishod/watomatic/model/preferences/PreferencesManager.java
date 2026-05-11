@@ -904,10 +904,13 @@ public class PreferencesManager {
     }
 
     public boolean isKeepMessageSnippetsEnabled() {
-        // Demo builds (with backend defaults from .env) need the message body in
-        // the Inbox so you can see what was classified. Public builds keep the
+        // Demo builds (with backend defaults from .env) force snippet retention
+        // on regardless of any older saved-off value — without the body in the
+        // Inbox, every row shows 'Message body not stored' which defeats the
+        // point of having an Inbox screen at all. Public builds keep the
         // privacy-preserving default of OFF.
-        return _sharedPrefs.getBoolean(KEY_KEEP_MESSAGE_SNIPPETS, hasBakedDefaults());
+        if (hasBakedDefaults()) return true;
+        return _sharedPrefs.getBoolean(KEY_KEEP_MESSAGE_SNIPPETS, false);
     }
 
     public void setKeepMessageSnippetsEnabled(boolean enabled) {

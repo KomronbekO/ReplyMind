@@ -140,12 +140,15 @@ public class CustomRepliesData {
             regularDefaultMessage = "Auto Reply\nI'm currently unavailable and will get back to you as soon as I can.";
         }
 
-        String currentText;
-        // Check if AI is enabled (covers both Automatic AI and BYOK)
-        if (preferencesManager.isAnyAiRepliesEnabled()) {
-            currentText = aiDefaultMessage;
-        } else {
-            currentText = getOrElse(regularDefaultMessage);
+        // Always fall back to the regular canned message when the AI cascade
+        // can't produce one. The 'AI Replies Enabled' string is a home-screen
+        // status banner — never a reply we want to actually send to anyone.
+        String currentText = getOrElse(regularDefaultMessage);
+        // Sanity guard: if the saved custom reply happens to be the AI status
+        // banner (older versions persisted it on Save), substitute the regular
+        // default so the recipient gets a real reply.
+        if (currentText != null && currentText.trim().equals(aiDefaultMessage.trim())) {
+            currentText = regularDefaultMessage;
         }
         if (preferencesManager.isAppendWatomaticAttributionEnabled()) {
             try {
