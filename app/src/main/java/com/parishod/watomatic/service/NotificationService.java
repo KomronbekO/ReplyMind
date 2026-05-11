@@ -468,6 +468,17 @@ public class NotificationService extends NotificationListenerService {
         if (systemPrompt == null || systemPrompt.trim().isEmpty()) systemPrompt = DEFAULT_LLM_PROMPT;
         if (model == null || model.isEmpty()) model = DEFAULT_LLM_MODEL;
 
+        // Mix in the user's profile (display name, occupation, tone, relationships)
+        // so the LLM speaks as them in first person and recognises VIP senders.
+        systemPrompt = enrichSystemPromptWithProfile(systemPrompt, prefs);
+
+        // Prepend the sender's name to the message so the model can reference
+        // who's writing — "Message from Mum: …" beats raw "…" for context.
+        String senderTitle = NotificationUtils.getTitle(sbn);
+        String enrichedIncoming = (senderTitle == null || senderTitle.isEmpty())
+                ? incomingMessage
+                : "Message from " + senderTitle + ":\n" + incomingMessage;
+
         baseUrl = Constants.INSTANCE.getPROVIDER_URLS().get(provider);
         if ("Custom".equals(provider)) {
             baseUrl = prefs.getCustomOpenAIApiUrl();
@@ -479,13 +490,66 @@ public class NotificationService extends NotificationListenerService {
         OpenAIService service = RetrofitInstance.getOpenAIRetrofitInstance(baseUrl).create(OpenAIService.class);
 
         if ("Claude".equals(provider)) {
-            fetchClaudeReply(service, baseUrl, apiKey, model, systemPrompt, incomingMessage, sbn, notificationWear, fallbackReplyText);
+            fetchClaudeReply(service, baseUrl, apiKey, model, systemPrompt, enrichedIncoming, sbn, notificationWear, fallbackReplyText);
         } else if ("Gemini".equals(provider)) {
-            fetchGeminiReply(service, baseUrl, apiKey, model, systemPrompt, incomingMessage, sbn, notificationWear, fallbackReplyText);
+            fetchGeminiReply(service, baseUrl, apiKey, model, systemPrompt, enrichedIncoming, sbn, notificationWear, fallbackReplyText);
         } else {
             // OpenAI, Grok, DeepSeek, Mistral, Custom
-            fetchOpenAiCompatibleReply(service, apiKey, model, systemPrompt, incomingMessage, sbn, notificationWear, fallbackReplyText);
+            fetchOpenAiCompatibleReply(service, apiKey, model, systemPrompt, enrichedIncoming, sbn, notificationWear, fallbackReplyText);
         }
+    }
+
+    /** Append a "You are <name>" preamble built from the user's profile to the
+     *  base system prompt. Falls back to the raw prompt when the profile is
+     *  empty. Kept inline so the existing fetch helpers don't need re-plumbing. */
+    private static String enrichSystemPromptWithProfile(String basePrompt,
+                                                        PreferencesManager prefs) {
+        com.parishod.watomatic.model.classifier.UserProfile p;
+        try {
+            p = prefs.getUserProfile();
+        } catch (Throwable t) {
+            return basePrompt;
+        }
+        if (p == null) return basePrompt;
+        StringBuilder sb = new StringBuilder();
+        String name = p.getDisplayName();
+        if (name != null && !name.trim().isEmpty()) {
+            sb.append("You are ").append(name.trim()).append(". ");
+        }
+        String occ = p.getOccupation();
+        if (occ != null && !occ.trim().isEmpty()) {
+            sb.append("Your occupation: ").append(occ.trim()).append(". ");
+        }
+        com.parishod.watomatic.model.classifier.UserProfile.Tone tone = p.getTone();
+        if (tone != null) {
+            String hint;
+            switch (tone.name()) {
+                case "PROFESSIONAL": hint = "Keep replies polite and professional."; break;
+                case "BRIEF":        hint = "Keep replies very short — 1 short sentence."; break;
+                case "CASUAL":
+                default:             hint = "Keep replies warm and casual, like a friend."; break;
+            }
+            sb.append(hint).append(" ");
+        }
+        java.util.List<com.parishod.watomatic.model.classifier.KeyRelationship> rels =
+                p.getKeyRelationships();
+        if (rels != null && !rels.isEmpty()) {
+            sb.append("Key people in your life: ");
+            for (int i = 0; i < rels.size() && i < 6; i++) {
+                com.parishod.watomatic.model.classifier.KeyRelationship r = rels.get(i);
+                if (r == null) continue;
+                if (i > 0) sb.append(", ");
+                sb.append(r.getName()).append(" (").append(r.getRole()).append(")");
+            }
+            sb.append(". ");
+        }
+        String ctx = p.getAdditionalContext();
+        if (ctx != null && !ctx.trim().isEmpty()) {
+            sb.append("Extra context: ").append(ctx.trim()).append(" ");
+        }
+        if (sb.length() == 0) return basePrompt;
+        sb.append("\n\n").append(basePrompt);
+        return sb.toString();
     }
 
     private void fetchAtomaticAiReply(StatusBarNotification sbn, NotificationWear notificationWear, String incomingMessage, String fallbackReplyText) {

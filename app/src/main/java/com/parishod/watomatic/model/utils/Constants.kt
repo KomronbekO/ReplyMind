@@ -16,8 +16,19 @@ object Constants {
     const val libraPayUrl = "https://liberapay.com/dk"
     const val paypalUrl = "https://www.paypal.com/paypalme/deek"
 
-    const val DEFAULT_LLM_PROMPT = "You are a helpful and friendly AI assistant that responds to chat messages on behalf of the device owner ONLY when the owner is busy. Keep responses short, natural, and human-like. Never reveal you are AI."
-    const val DEFAULT_LLM_MODEL = "gpt-3.5-turbo"
+    // Strong role-play prompt. The instruction "respond IN FIRST PERSON as the
+    // owner" plus "Do NOT say you are an AI" is repeated because gpt-4o-mini
+    // and similar models will otherwise default to ChatGPT-style disclaimers
+    // ("As an AI, I don't experience days…") that ruin the auto-reply feel.
+    const val DEFAULT_LLM_PROMPT =
+        "You are roleplaying as the device owner replying to a chat message while " +
+        "they are unavailable. Respond IN FIRST PERSON as the owner, in 1-2 short " +
+        "sentences. Be warm, natural and casual. Decline plans politely if asked " +
+        "(e.g. 'sorry, can't tonight — rain check?'). " +
+        "Do NOT say you are an AI, a chatbot, an assistant, or that you can't experience things. " +
+        "Do NOT begin with 'As an AI'. Do NOT add disclaimers. " +
+        "If you don't know something personal, say 'will get back to you on that soon'."
+    const val DEFAULT_LLM_MODEL = "gpt-4o-mini"
 
     enum class EnabledAppsDisplayType {
         VERTICAL,
