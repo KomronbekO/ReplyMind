@@ -49,7 +49,9 @@ public class ClassificationCategory {
                 new ClassificationCategory(
                         ID_URGENT,
                         "Urgent",
-                        "Time-sensitive messages needing immediate attention: emergencies, deadlines today, urgent requests from boss/family.",
+                        "Time-sensitive messages needing immediate attention: emergencies, accidents, "
+                                + "deadlines today, urgent requests from boss or family, things that "
+                                + "cannot wait.",
                         "🚨",
                         "#E53935",
                         CategoryAction.ESCALATE,
@@ -57,7 +59,9 @@ public class ClassificationCategory {
                 new ClassificationCategory(
                         ID_WORK,
                         "Work",
-                        "Messages from colleagues, clients, or about work projects, meetings, professional matters.",
+                        "Messages from colleagues, clients, managers about work projects, meetings, "
+                                + "professional matters, reports, deadlines, office issues, "
+                                + "follow-ups on tasks.",
                         "💼",
                         "#1E88E5",
                         CategoryAction.REPLY_TEMPLATE,
@@ -65,7 +69,10 @@ public class ClassificationCategory {
                 new ClassificationCategory(
                         ID_FAMILY_FRIENDS,
                         "Family & Friends",
-                        "Personal messages from close relationships: family members, close friends, partner.",
+                        "Personal messages from family members, close friends, partner. Casual chit-chat, "
+                                + "invitations to hang out, parties, dinner, coffee, going out, "
+                                + "checking in, asking how you are, sharing daily life, banter, "
+                                + "saying hi, planning the weekend.",
                         "❤️",
                         "#43A047",
                         CategoryAction.REPLY_DEFAULT,
@@ -73,7 +80,9 @@ public class ClassificationCategory {
                 new ClassificationCategory(
                         ID_PROMOTIONAL,
                         "Promotional",
-                        "Marketing messages, deals, newsletters, OTPs, transactional notifications, automated content.",
+                        "Marketing messages, sales, discounts, deals, newsletters, OTP codes, "
+                                + "transactional notifications, automated content, account alerts, "
+                                + "subscribe links, ads.",
                         "📢",
                         "#FB8C00",
                         CategoryAction.SUPPRESS,
@@ -81,7 +90,8 @@ public class ClassificationCategory {
                 new ClassificationCategory(
                         ID_SPAM,
                         "Spam",
-                        "Suspicious, scam, phishing, or unsolicited messages from unknown senders.",
+                        "Suspicious, scam, phishing, unsolicited messages from unknown senders, "
+                                + "fake prize claims, fraud attempts, malicious links.",
                         "🚫",
                         "#8E24AA",
                         CategoryAction.SUPPRESS,
@@ -89,7 +99,8 @@ public class ClassificationCategory {
                 new ClassificationCategory(
                         ID_OTHER,
                         "Other",
-                        "Messages that don't clearly fit the above categories.",
+                        "Messages that don't clearly fit any of the above categories, miscellaneous "
+                                + "or unclassified content.",
                         "💬",
                         "#757575",
                         CategoryAction.REPLY_DEFAULT,

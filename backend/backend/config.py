@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     rag_weight_sender: float = 0.3
     rag_weight_global: float = 0.1
 
+    # Confidence-gated semantic backstop. When the MLP's top-1 confidence is
+    # below `low_confidence_threshold` AND the gap to top-2 is below
+    # `ambiguous_margin`, fall back to a cosine match against the user-supplied
+    # category descriptions instead of trusting the argmax.
+    low_confidence_threshold: float = 0.70
+    ambiguous_margin: float = 0.40
+
 
 @lru_cache
 def get_settings() -> Settings:

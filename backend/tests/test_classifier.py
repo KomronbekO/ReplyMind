@@ -104,3 +104,38 @@ def test_classify_response_shape() -> None:
     for key in ("category_id", "confidence", "reasoning", "rag_evidence", "cold_start", "latency_ms"):
         assert key in body, f"missing key {key}"
     assert isinstance(body["rag_evidence"], list)
+
+
+def test_backstop_with_rich_descriptions() -> None:
+    """When categories carry rich descriptions, an ambiguous casual invite like
+    'Hey, doing a party today, are you in?' should land on family_friends via
+    the cosine backstop — even though the raw MLP head splits other/family."""
+    client, headers = _make_client()
+    payload = _payload(
+        "Hey Komron, we are doing a party today, are you in?",
+        user_id="backstop-user-1",
+        sender="Friend",
+    )
+    payload["categories"] = [
+        {"id": "urgent", "name": "Urgent",
+         "description": "Time-sensitive emergencies, deadlines today, urgent requests."},
+        {"id": "work", "name": "Work",
+         "description": "Messages from colleagues, clients, projects, meetings."},
+        {"id": "family_friends", "name": "Family",
+         "description": "Personal messages from close relationships: family, "
+                        "close friends, casual invitations to meet up, hang out, "
+                        "party, grab a coffee."},
+        {"id": "promotional", "name": "Promo",
+         "description": "Marketing, deals, newsletters, automated content."},
+        {"id": "spam", "name": "Spam",
+         "description": "Suspicious, scam, phishing, unsolicited from unknown senders."},
+        {"id": "other", "name": "Other",
+         "description": "Messages that don't fit the above categories."},
+    ]
+    r = client.post("/classify", json=payload, headers=headers)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["category_id"] == "family_friends", (
+        f"backstop should have pulled to family_friends, got {body['category_id']} "
+        f"(reasoning: {body['reasoning']})"
+    )

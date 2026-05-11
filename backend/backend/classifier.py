@@ -18,15 +18,77 @@ import torch.nn.functional as F
 
 from . import rag, vector_store
 from .config import get_settings
-from .models.embedder import embed_one
+from .models.embedder import embed, embed_one
 from .models.mlp import MLPClassifier
-from .schemas import ClassifyRequest, ClassifyResponse
+from .schemas import CategoryDescriptor, ClassifyRequest, ClassifyResponse
 
 log = logging.getLogger("replymind.classifier")
 
 _model = None
 _idx_to_label: dict[int, str] | None = None
 _lock = threading.Lock()
+
+# Cache of (id-tuple, desc-tuple) → np.ndarray (n, 384). Descriptions don't
+# change across calls in a session, so we embed them once and reuse.
+_DESC_CACHE: dict[tuple, tuple[list[str], np.ndarray]] = {}
+_DESC_CACHE_LOCK = threading.Lock()
+
+
+def _description_vectors(cats: list[CategoryDescriptor]) -> tuple[list[str], np.ndarray] | None:
+    """Embed the category descriptions, cached. Returns (ids, vectors) or None
+    if descriptions are missing/blank for every category."""
+    if not cats:
+        return None
+    pairs = [(c.id, (c.description or "").strip()) for c in cats]
+    if not any(d for _, d in pairs):
+        return None
+    key = tuple(pairs)
+    with _DESC_CACHE_LOCK:
+        cached = _DESC_CACHE.get(key)
+        if cached is not None:
+            return cached
+        ids = [cid for cid, _ in pairs]
+        texts = [d if d else cid for _, d in pairs]  # fall back to id if no description
+        vecs = embed(texts)
+        _DESC_CACHE[key] = (ids, vecs)
+        return ids, vecs
+
+
+def _backstop_pick(
+    current: np.ndarray,
+    cats: list[CategoryDescriptor],
+    probs: np.ndarray,
+    idx_to_label: dict[int, str],
+    requested_ids: set[str],
+) -> tuple[int, str, float, str] | None:
+    """Cosine-match the raw current embedding against category descriptions.
+    Returns (idx, label, confidence, reason) of the best description match,
+    or None if descriptions are absent."""
+    desc = _description_vectors(cats)
+    if desc is None:
+        return None
+    ids, desc_vecs = desc
+    # current is already L2-normalised by the embedder; desc_vecs too.
+    sims = desc_vecs @ current  # (n,) cosine similarities
+    order = np.argsort(-sims)
+    for j in order:
+        cid = ids[int(j)]
+        # Backstop only picks among labels the MLP head knows AND the caller
+        # asked for — keeps the response inside the agreed taxonomy.
+        if requested_ids and cid not in requested_ids:
+            continue
+        # Map label-id back to the MLP idx so confidence comparison is fair.
+        for mlp_idx, mlp_label in idx_to_label.items():
+            if mlp_label == cid:
+                cosine = float(sims[int(j)])
+                # Re-blend with the MLP probability so we don't completely
+                # override the head when it had any opinion — softens edge cases.
+                blended = 0.5 * cosine + 0.5 * float(probs[mlp_idx])
+                return mlp_idx, mlp_label, blended, (
+                    f"low-confidence head ({probs[mlp_idx]:.2f}); "
+                    f"description-similarity picked {mlp_label} (cos={cosine:.2f})"
+                )
+    return None
 
 
 def _load_model():
@@ -92,7 +154,38 @@ def classify_message(req: ClassifyRequest) -> ClassifyResponse:
                 confidence = float(probs[top_idx])
                 break
 
-    reasoning = _synthesise_reasoning(top_label, confidence, evidence)
+    # Confidence-gated semantic backstop. The MLP is trained on a stitched
+    # corpus where the `other` slice acts as a catch-all dump — short casual
+    # texts (e.g., real WhatsApp invitations) tend to land here even when a
+    # better-fitting category exists. Only fire the backstop when:
+    #   - the head's top guess is `other` (the failure mode we care about), AND
+    #   - it's not overwhelmingly confident, AND
+    #   - the runner-up is within striking distance.
+    # This scoping avoids over-correcting on classes where the head is reliable
+    # (work / spam / promotional all stay untouched).
+    settings = get_settings()
+    sorted_probs = np.sort(probs)[::-1]
+    margin = float(sorted_probs[0] - sorted_probs[1]) if len(sorted_probs) >= 2 else 1.0
+    backstop_reason: str | None = None
+    if (
+        top_label == "other"
+        and confidence < settings.low_confidence_threshold
+        and margin < settings.ambiguous_margin
+    ):
+        picked = _backstop_pick(current, req.categories or [], probs, idx_to_label, requested_ids)
+        if picked is not None:
+            new_idx, new_label, new_conf, backstop_reason = picked
+            if new_label != top_label:
+                log.info(
+                    "backstop override: %s (%.2f) → %s (cos-blend %.2f)",
+                    top_label, confidence, new_label, new_conf,
+                )
+                top_idx, top_label, confidence = new_idx, new_label, new_conf
+            else:
+                # Same label, no override needed — drop the backstop reasoning.
+                backstop_reason = None
+
+    reasoning = backstop_reason or _synthesise_reasoning(top_label, confidence, evidence)
 
     response = ClassifyResponse(
         category_id=top_label,
