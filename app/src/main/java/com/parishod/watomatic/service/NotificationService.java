@@ -336,7 +336,7 @@ public class NotificationService extends NotificationListenerService {
             boolean haveBody = incomingMessage != null && !incomingMessage.trim().isEmpty();
             Log.d(TAG, "BYOK mode - API key configured: " + haveKey);
             if (haveKey && haveBody) {
-                fetchAiReply(sbn, notificationWear, incomingMessage, fallbackReplyText);
+                fetchAiReply(sbn, notificationWear, incomingMessage, fallbackReplyText, classification);
                 return;
             }
         }
@@ -443,6 +443,12 @@ public class NotificationService extends NotificationListenerService {
     }
 
     private void fetchAiReply(StatusBarNotification sbn, NotificationWear notificationWear, String incomingMessage, String fallbackReplyText) {
+        fetchAiReply(sbn, notificationWear, incomingMessage, fallbackReplyText, null);
+    }
+
+    private void fetchAiReply(StatusBarNotification sbn, NotificationWear notificationWear,
+                              String incomingMessage, String fallbackReplyText,
+                              ClassificationResult classification) {
         PreferencesManager prefs = PreferencesManager.getPreferencesInstance(this);
 
         // Determine which backend API to use based on the selected reply method
@@ -495,12 +501,27 @@ public class NotificationService extends NotificationListenerService {
         OpenAIService service = RetrofitInstance.getOpenAIRetrofitInstance(baseUrl).create(OpenAIService.class);
 
         if ("Claude".equals(provider)) {
-            fetchClaudeReply(service, baseUrl, apiKey, model, systemPrompt, enrichedIncoming, sbn, notificationWear, fallbackReplyText);
+            fetchClaudeReply(service, baseUrl, apiKey, model, systemPrompt, enrichedIncoming, sbn, notificationWear, fallbackReplyText, classification, incomingMessage);
         } else if ("Gemini".equals(provider)) {
-            fetchGeminiReply(service, baseUrl, apiKey, model, systemPrompt, enrichedIncoming, sbn, notificationWear, fallbackReplyText);
+            fetchGeminiReply(service, baseUrl, apiKey, model, systemPrompt, enrichedIncoming, sbn, notificationWear, fallbackReplyText, classification, incomingMessage);
         } else {
             // OpenAI, Grok, DeepSeek, Mistral, Custom
-            fetchOpenAiCompatibleReply(service, apiKey, model, systemPrompt, enrichedIncoming, sbn, notificationWear, fallbackReplyText);
+            fetchOpenAiCompatibleReply(service, apiKey, model, systemPrompt, enrichedIncoming, sbn, notificationWear, fallbackReplyText, classification, incomingMessage);
+        }
+    }
+
+    /** Persist an AI-generated reply with classification metadata when we have
+     *  it, falling back to the bare-bones sendActualReply when we don't. */
+    private void sendAiActualReply(StatusBarNotification sbn,
+                                   NotificationWear nw,
+                                   String aiReply,
+                                   ClassificationResult classification,
+                                   String incomingBody) {
+        if (classification != null) {
+            sendActualReplyWithMeta(sbn, nw, aiReply, classification,
+                    CategoryAction.REPLY_DEFAULT, incomingBody);
+        } else {
+            sendActualReply(sbn, nw, aiReply);
         }
     }
 
@@ -665,7 +686,7 @@ public class NotificationService extends NotificationListenerService {
         });
     }
 
-    private void fetchClaudeReply(OpenAIService service, String baseUrl, String apiKey, String model, String systemPrompt, String incomingMessage, StatusBarNotification sbn, NotificationWear notificationWear, String fallbackReplyText) {
+    private void fetchClaudeReply(OpenAIService service, String baseUrl, String apiKey, String model, String systemPrompt, String incomingMessage, StatusBarNotification sbn, NotificationWear notificationWear, String fallbackReplyText, ClassificationResult classification, String incomingBody) {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("model", model);
         requestBody.addProperty("max_tokens", 1024);
@@ -693,7 +714,7 @@ public class NotificationService extends NotificationListenerService {
                         JsonArray content = response.body().getAsJsonArray("content");
                         if (content != null && content.size() > 0) {
                             String reply = content.get(0).getAsJsonObject().get("text").getAsString();
-                            sendActualReply(sbn, notificationWear, reply);
+                            sendAiActualReply(sbn, notificationWear, reply, classification, incomingBody);
                             return;
                         }
                     } catch (Exception e) {
@@ -701,18 +722,18 @@ public class NotificationService extends NotificationListenerService {
                     }
                 }
                 Log.e(TAG, "Claude API failed: " + response.code() + " " + response.message());
-                sendActualReply(sbn, notificationWear, fallbackReplyText);
+                sendAiActualReply(sbn, notificationWear, fallbackReplyText, classification, incomingBody);
             }
 
             @Override
             public void onFailure(@NonNull Call<JsonObject> call, @NonNull Throwable t) {
                 Log.e(TAG, "Claude API network error", t);
-                sendActualReply(sbn, notificationWear, fallbackReplyText);
+                sendAiActualReply(sbn, notificationWear, fallbackReplyText, classification, incomingBody);
             }
         });
     }
 
-    private void fetchGeminiReply(OpenAIService service, String baseUrl, String apiKey, String model, String systemPrompt, String incomingMessage, StatusBarNotification sbn, NotificationWear notificationWear, String fallbackReplyText) {
+    private void fetchGeminiReply(OpenAIService service, String baseUrl, String apiKey, String model, String systemPrompt, String incomingMessage, StatusBarNotification sbn, NotificationWear notificationWear, String fallbackReplyText, ClassificationResult classification, String incomingBody) {
         JsonObject requestBody = new JsonObject();
         JsonArray contents = new JsonArray();
         JsonObject contentObj = new JsonObject();
@@ -739,7 +760,7 @@ public class NotificationService extends NotificationListenerService {
                             JsonArray parts = content.getAsJsonArray("parts");
                             if (parts != null && parts.size() > 0) {
                                 String reply = parts.get(0).getAsJsonObject().get("text").getAsString();
-                                sendActualReply(sbn, notificationWear, reply);
+                                sendAiActualReply(sbn, notificationWear, reply, classification, incomingBody);
                                 return;
                             }
                         }
@@ -748,18 +769,18 @@ public class NotificationService extends NotificationListenerService {
                     }
                 }
                 Log.e(TAG, "Gemini API failed: " + response.code() + " " + response.message());
-                sendActualReply(sbn, notificationWear, fallbackReplyText);
+                sendAiActualReply(sbn, notificationWear, fallbackReplyText, classification, incomingBody);
             }
 
             @Override
             public void onFailure(@NonNull Call<JsonObject> call, @NonNull Throwable t) {
                 Log.e(TAG, "Gemini API network error", t);
-                sendActualReply(sbn, notificationWear, fallbackReplyText);
+                sendAiActualReply(sbn, notificationWear, fallbackReplyText, classification, incomingBody);
             }
         });
     }
 
-    private void fetchOpenAiCompatibleReply(OpenAIService service, String apiKey, String model, String systemPrompt, String incomingMessage, StatusBarNotification sbn, NotificationWear notificationWear, String fallbackReplyText) {
+    private void fetchOpenAiCompatibleReply(OpenAIService service, String apiKey, String model, String systemPrompt, String incomingMessage, StatusBarNotification sbn, NotificationWear notificationWear, String fallbackReplyText, ClassificationResult classification, String incomingBody) {
         List<Message> messages = new ArrayList<>();
         messages.add(new Message("system", systemPrompt));
         messages.add(new Message("user", incomingMessage));
@@ -777,18 +798,18 @@ public class NotificationService extends NotificationListenerService {
 
                     String aiReply = response.body().getChoices().get(0).getMessage().getContent().trim();
                     Log.i(TAG, "OpenAI/Compatible successful response: " + aiReply);
-                    sendActualReply(sbn, notificationWear, aiReply);
+                    sendAiActualReply(sbn, notificationWear, aiReply, classification, incomingBody);
                 } else {
                     Log.e(TAG, "OpenAI/Compatible API failed: " + response.code() + " " + response.message());
                     // Fallback to default reply
-                    sendActualReply(sbn, notificationWear, fallbackReplyText);
+                    sendAiActualReply(sbn, notificationWear, fallbackReplyText, classification, incomingBody);
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<OpenAIResponse> call, @NonNull Throwable t) {
                 Log.e(TAG, "OpenAI/Compatible API network error", t);
-                sendActualReply(sbn, notificationWear, fallbackReplyText);
+                sendAiActualReply(sbn, notificationWear, fallbackReplyText, classification, incomingBody);
             }
         });
     }
