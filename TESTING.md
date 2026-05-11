@@ -1,45 +1,133 @@
-# Testing Guide for Google Play Billing Implementation
+# Testing Guide
 
-## Prerequisites
-1.  **Google Play Console**: Ensure you have created the subscription products with IDs:
-    *   `automatic-ai-pro-monthly`
-    *   `automatic-ai-pro-annual`
-2.  **Firebase**: Ensure Firebase Functions are deployed (`firebase deploy --only functions`).
-3.  **Test Account**: Add your email as a "License Tester" in Google Play Console settings.
+How to verify the ReplyMind system end-to-end. Three test surfaces: the
+backend (Python), the Android client, and the live wire-up between them.
 
-## 1. Testing Purchase Flow (Sandbox)
-1.  **Build**: Install the `GooglePlayDebug` build variant on a physical device (Emulators often have issues with Play Billing).
-2.  **Navigate**: Go to `SubscriptionInfoActivity` (via "Automatic AI" settings).
-3.  **UI Check**: Verify prices are loaded (e.g., $1.99/month).
-4.  **Purchase**: Click "Subscribe". The Google Play bottom sheet should appear.
-    *   **Success**: Use a test card "Always approves". Verify the app shows "Active: Monthly Plan".
-    *   **Decline**: Use a test card "Always declines". Verify the app shows an error.
+## 1. Backend (pytest)
 
-## 2. Testing Backend Verification
-1.  **Logs**: Monitor Logcat (`TAG: BillingManager` and `FirebaseBackend`).
-2.  **Verify**: After a successful purchase, check Logcat for "Backend verification successful".
-3.  **Firestore**: Go to Firebase Console -> Firestore.
-    *   Check `users/{userId}/subscriptions/active` document.
-    *   Verify `isValid` is true and `expiryTime` is updated.
+```bash
+cd backend
+source .venv/bin/activate
+pytest -q
+# 19 passed, 1 skipped
+```
 
-## 3. Testing Restoration
-1.  **Uninstall & Reinstall**: Uninstall the app. Reinstall it.
-2.  **Login**: Log in with the same account.
-3.  **Check**: Go to Subscription page.
-4.  **Action**: Click "Restore Purchases".
-5.  **Result**: Toast should say "Successfully restored subscription!" and status should update to Active.
+Covers:
 
-## 4. Testing Subscription Expiry (Simulated)
-1.  **Play Console**: In License Testing settings, set "Subscription duration" to "5 minutes" (effectively 5 minutes for monthly in test).
-2.  **Wait**: Wait for the subscription to expire.
-3.  **Launch**: Relaunch the app.
-4.  **Verify**: `SubscriptionCheckWorker` (or manual refresh) should eventually update status to "Expired" (inactive).
+| Test file                    | What it exercises |
+|------------------------------|-------------------|
+| `tests/test_api.py`          | FastAPI routes: `/healthz`, `/classify`, `/profile`, `/history/sync`, bearer-auth required on protected endpoints |
+| `tests/test_classifier.py`   | End-to-end classify path on the trained model — sanity checks for urgent / work / promotional / spam / family-friends inputs, plus the confidence-gated backstop |
+| `tests/test_rag.py`          | ChromaDB cold start, per-sender retrieval, per-user isolation |
+| `tests/test_data_mapping.py` | Dataset loader smoke tests (sources reachable, per-category cap honoured, stratified split keeps class distribution) |
 
-## 5. Testing Device Limits (Optional/Future)
-1.  **Multi-Device**: Log in on a 4th device.
-2.  **Verify**: Ensure the backend handles this gracefully (currently logs warnings or rejects based on rules).
+If a test is skipped, it's because the trained model artifact isn't on
+disk yet — run `python -m backend.train` first.
 
-## 6. AWS Migration Readiness
-To migrate to AWS in the future:
-1.  Create `AwsBackendService` implementing `BackendService`.
-2.  Update `SubscriptionManagerImpl` and `BillingManagerImpl` to use `AwsBackendService` instead of `FirebaseBackendService`.
+## 2. Android (Gradle unit tests)
+
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+./gradlew testDefaultDebugUnitTest
+# 442 tests passing
+```
+
+Most relevant suites for this project:
+
+| Test class                                | What it exercises |
+|-------------------------------------------|-------------------|
+| `BackendMessageClassifierTest`            | Happy path, not-configured, misconfigured, HTTP error, network error, unknown-category fallback |
+| `CategoryActionRouterTest`                | Routes each category to the correct action (escalate / template / suppress / default) |
+| `PreferencesManagerTest`                  | Backend / classification / snippet flags default correctly with and without baked `.env` values |
+| `MessageLogTest`                          | Room entity nullability after the v3 schema migration |
+
+## 3. End-to-end on a real device
+
+Pre-requisites: backend already trained (`models/classifier.pt` exists),
+phone in developer mode with USB debugging, `.env` populated.
+
+### Start the backend
+
+```bash
+cd backend && uvicorn backend.main:app --host 0.0.0.0 --port 8765 &
+curl -H "Authorization: Bearer $(grep DEMO_TOKEN .env | cut -d= -f2)" \
+     http://127.0.0.1:8765/healthz
+# expect {"ok":true,"model_loaded":true,"chroma_ready":true}
+```
+
+### Connect the phone
+
+```bash
+adb devices                                  # confirm phone is listed
+adb -s <serial> reverse tcp:8765 tcp:8765    # forward laptop port to phone
+```
+
+### Install and configure
+
+```bash
+./gradlew assembleDefaultDebug
+adb -s <serial> install -r app/build/outputs/apk/Default/debug/app-Default-debug.apk
+adb -s <serial> shell cmd notification allow_listener \
+    com.parishod.watomatic/com.parishod.watomatic.service.NotificationService
+```
+
+### Watch traffic during the test
+
+```bash
+adb -s <serial> logcat -v time | grep -iE "okhttp|classify|Automatic AI|backend"
+```
+
+### What to send
+
+| Message                                            | Expected category | Expected action |
+|----------------------------------------------------|--------------------|-----------------|
+| "want to grab dinner tonight?"                     | family_friends     | reply (warm)    |
+| "Please send the Q1 report by EOD"                 | work               | reply (template)|
+| "URGENT: warehouse on fire, call 911"              | urgent             | no reply (escalate) |
+| "50% OFF! Click to claim your prize"               | promotional / spam | no reply (suppress) |
+
+Each successful classify shows up in logcat as:
+
+```
+--> POST http://127.0.0.1:8765/classify
+<-- 200 OK ... (28ms)
+Classification: family_friends conf=0.84 — ...
+Automatic AI: using backend-suggested reply
+```
+
+Open the ReplyMind Inbox tab on the device to confirm the classification
+metadata was persisted.
+
+## 4. Cascade fallback test
+
+Verifies that turning off the backend mid-conversation doesn't break
+auto-reply.
+
+```bash
+# In the terminal running uvicorn:
+Ctrl-C                                       # or `kill $(cat /tmp/uvicorn.pid)`
+```
+
+Send another message from the test sender. Expected behaviour:
+
+- Logcat: `backend non-2xx` or `backend call failed`
+- Logcat: `delegateToFallback` followed by the BYOK / template path
+- Phone: still receives an auto-reply, just from the next-tier classifier
+
+Restart uvicorn → next message goes back through the backend path.
+
+## 5. Latency benchmark
+
+```bash
+cd backend
+python -m backend.eval_latency --base-url http://127.0.0.1:8765 --n 200
+```
+
+Writes `models/eval_latency.json` with p50 / p95 / p99 split by cold-start
+vs warm. Current readings on a 2024 MacBook Pro (CPU-only):
+
+```
+p50  12 ms
+p95  43 ms
+p99 138 ms
+```
