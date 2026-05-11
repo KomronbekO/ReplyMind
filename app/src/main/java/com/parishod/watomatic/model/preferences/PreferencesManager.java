@@ -771,7 +771,10 @@ public class PreferencesManager {
     }
 
     public boolean isClassificationEnabled() {
-        return _sharedPrefs.getBoolean(KEY_CLASSIFICATION_ENABLED, false);
+        // Default to true when the backend defaults are baked in via BuildConfig
+        // (i.e. backend/.env is set up) — otherwise the cascade is dead-on-arrival
+        // and the user gets the plain template reply.
+        return _sharedPrefs.getBoolean(KEY_CLASSIFICATION_ENABLED, hasBakedDefaults());
     }
 
     public void setClassificationEnabled(boolean enabled) {
