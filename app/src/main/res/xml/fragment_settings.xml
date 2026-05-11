@@ -20,6 +20,7 @@
             app:useSimpleSummaryProvider="true"/>
 
         <CheckBoxPreference android:title="@string/add_attribution_label"
+            android:icon="@drawable/ic_attribution"
             android:key="@string/pref_is_append_watomatic_attribution"
             android:summary="@string/append_watomatic_arribution_checkbox_label"/>
 
@@ -30,10 +31,12 @@
         >
 
         <SwitchPreference android:title="@string/show_notification_label"
+            android:icon="@drawable/ic_notification"
             android:key="@string/pref_show_notification_replied_msg"
             />
 
         <SwitchPreference android:title="@string/always_on_notification"
+            android:icon="@drawable/ic_bolt"
             android:key="@string/pref_show_foreground_service_notification"
             android:summary="@string/display_persistent_notification_summary"
             />
@@ -43,6 +46,7 @@
     <PreferenceCategory android:title="@string/preference_category_troubleshooting_label">
 
         <Preference android:title="@string/enable_auto_start_label"
+            android:icon="@drawable/ic_bolt"
             android:key="@string/pref_auto_start_permission" />
 
     </PreferenceCategory>
@@ -51,31 +55,37 @@
 
         <SwitchPreference
             android:key="@string/pref_classification_enabled"
+            android:icon="@drawable/ic_ai"
             android:title="@string/enable_smart_classification_title"
             android:summary="@string/enable_smart_classification_summary" />
 
         <Preference
             android:key="@string/pref_replymind_profile"
+            android:icon="@drawable/ic_baseline_person_24"
             android:title="@string/edit_your_profile_title"
             android:summary="@string/edit_your_profile_summary" />
 
         <Preference
             android:key="@string/pref_manage_categories"
+            android:icon="@drawable/ic_baseline_miscellaneous_services_24"
             android:title="@string/manage_categories_title"
             android:summary="@string/manage_categories_summary" />
 
         <Preference
             android:key="@string/pref_vip_contacts"
+            android:icon="@drawable/ic_users"
             android:title="@string/vip_contacts_title"
             android:summary="@string/vip_contacts_summary" />
 
         <Preference
             android:key="@string/pref_insights"
+            android:icon="@drawable/ic_inbox"
             android:title="@string/insights_title"
             android:summary="@string/insights_summary" />
 
         <Preference
             android:key="@string/pref_onboarding_reset"
+            android:icon="@drawable/ic_baseline_info_24"
             android:title="@string/onboarding_reset_title"
             android:summary="@string/onboarding_reset_summary" />
 
@@ -85,28 +95,19 @@
 
         <SwitchPreference
             android:key="@string/pref_backend_enabled"
+            android:icon="@drawable/ic_baseline_miscellaneous_services_24"
             android:title="@string/backend_enabled_title"
             android:summary="@string/backend_enabled_summary" />
 
-        <EditTextPreference
-            android:key="@string/pref_backend_url"
-            android:title="@string/backend_url_title"
-            android:summary="@string/backend_url_summary"
-            android:dialogTitle="@string/backend_url_dialog_title"
-            android:hint="http://10.0.2.2:8000" />
-
-        <Preference
-            android:key="@string/pref_backend_token"
-            android:title="@string/backend_token_title"
-            android:summary="@string/backend_token_summary" />
-
         <Preference
             android:key="@string/pref_backend_test"
+            android:icon="@drawable/ic_check_circle"
             android:title="@string/backend_test_title"
             android:summary="@string/backend_test_summary" />
 
         <Preference
             android:key="@string/pref_backend_sync_history"
+            android:icon="@drawable/ic_arrow_forward"
             android:title="@string/backend_sync_history_title"
             android:summary="@string/backend_sync_history_summary" />
 

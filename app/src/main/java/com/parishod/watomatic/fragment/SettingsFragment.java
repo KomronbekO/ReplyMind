@@ -3,15 +3,11 @@ package com.parishod.watomatic.fragment;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
@@ -187,29 +183,9 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             });
         }
 
-        EditTextPreference urlPref = findPreference(getString(R.string.pref_backend_url));
-        if (urlPref != null) {
-            urlPref.setText(prefs.getBackendUrl());
-            urlPref.setSummaryProvider(p ->
-                    isBlank(prefs.getBackendUrl())
-                            ? getString(R.string.backend_url_summary)
-                            : prefs.getBackendUrl());
-            urlPref.setOnPreferenceChangeListener((p, newValue) -> {
-                prefs.saveBackendUrl(newValue == null ? "" : newValue.toString());
-                return true;
-            });
-        }
-
-        Preference tokenPref = findPreference(getString(R.string.pref_backend_token));
-        if (tokenPref != null) {
-            tokenPref.setSummary(isBlank(prefs.getBackendToken())
-                    ? getString(R.string.backend_token_unset)
-                    : getString(R.string.backend_token_set));
-            tokenPref.setOnPreferenceClickListener(p -> {
-                showBackendTokenDialog(prefs, tokenPref);
-                return true;
-            });
-        }
+        // URL + bearer token are intentionally not exposed in the UI any more —
+        // they come from backend/.env at build time so the demo "just works"
+        // after install. If you need to override, edit .env and reinstall.
 
         Preference testPref = findPreference(getString(R.string.pref_backend_test));
         if (testPref != null) {
@@ -249,27 +225,6 @@ public class SettingsFragment extends PreferenceFragmentCompat {
                                 Toast.LENGTH_LONG).show());
                     }
                 });
-    }
-
-    private void showBackendTokenDialog(@NonNull PreferencesManager prefs, @NonNull Preference tokenPref) {
-        EditText input = new EditText(requireContext());
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        input.setHint("Bearer token");
-        new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.backend_token_dialog_title)
-                .setView(input)
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                    String token = input.getText() == null ? "" : input.getText().toString().trim();
-                    if (token.isEmpty()) {
-                        prefs.deleteBackendToken();
-                        tokenPref.setSummary(getString(R.string.backend_token_unset));
-                    } else {
-                        prefs.saveBackendToken(token);
-                        tokenPref.setSummary(getString(R.string.backend_token_set));
-                    }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
     }
 
     private void runBackendHealthCheck(@NonNull PreferencesManager prefs) {

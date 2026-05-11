@@ -598,7 +598,7 @@
     <string name="pref_backend_token" translatable="false">pref_backend_token_pref_id</string>
     <string name="pref_backend_test" translatable="false">pref_backend_test</string>
     <string name="backend_enabled_title">Use local backend</string>
-    <string name="backend_enabled_summary">Route classification through your self-hosted FastAPI server before BYOK.</string>
+    <string name="backend_enabled_summary">Route classification through the bundled local FastAPI server. URL and bearer token come from backend/.env at build time.</string>
     <string name="backend_url_title">Backend URL</string>
     <string name="backend_url_summary">e.g. http://10.0.2.2:8000 (emulator) or http://192.168.1.x:8000 (LAN)</string>
     <string name="backend_url_dialog_title">Enter backend URL</string>
@@ -608,7 +608,7 @@
     <string name="backend_token_set">Token set</string>
     <string name="backend_token_unset">Not configured</string>
     <string name="backend_test_title">Test connection</string>
-    <string name="backend_test_summary">Hit /healthz with the current URL and token.</string>
+    <string name="backend_test_summary">Ping /healthz on the bundled URL.</string>
     <string name="backend_test_ok">Connected (model: %1$s)</string>
     <string name="backend_test_fail">Connection failed: %1$s</string>
     <string name="backend_test_missing">Set URL and token first.</string>
